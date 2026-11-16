@@ -1,0 +1,1 @@
+defaults: [bert-base-cased, _self_]

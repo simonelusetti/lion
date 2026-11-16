@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lion-sequence-labelling"
+version = "0.1.0"
+description = "Frozen encodings, context interventions, and sequence labelling"
+requires-python = ">=3.10"
+dependencies = [
+  "forge", "torch>=2.3", "transformers>=4.45", "datasets>=3",
+  "huggingface-hub", "nltk", "scikit-learn", "seqeval", "tqdm", "matplotlib"
+]
+
+[tool.setuptools.packages.find]
+include = ["lion*", "tagger*"]

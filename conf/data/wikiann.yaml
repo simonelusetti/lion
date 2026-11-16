@@ -1,0 +1,7 @@
+name: wikiann
+seed: 0
+validation_fraction: 0.1
+cap:
+  train: null
+  validation: null
+  test: null

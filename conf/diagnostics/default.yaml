@@ -1,0 +1,44 @@
+results: results
+cache: data/cache/diagnostics
+datasets: [fewnerd, wikiann, conll2003, wnut, ud_upos, ud_deprel, ud_discourse, conll2000]
+seeds: [0, 1, 2]
+sample_seed: 1729
+positions_per_sentence: 2
+sentences:
+  train: 2048
+  validation: 512
+  test: 1024
+focals:
+  train: 4096
+  validation: 1024
+  test: 2048
+budgets:
+  ud_discourse:
+    sentences:
+      train: 8192
+      validation: 1600
+      test: 1500
+    focals:
+      train: 16384
+      validation: 3200
+      test: 3000
+min_type_frequency: 20
+ece_bins: 10
+probe_min:
+  train: 32
+  validation: 8
+  test: 8
+erasure_rtol: 0.000001
+domain_min:
+  train: 128
+  validation: 16
+  test: 32
+mmd:
+  per_group: 128
+  min_group: 20
+  min_documents: 3
+  permutations: 199
+substitution:
+  focals: 128
+  radius: 8
+  bank_per_signature: 64

@@ -1,0 +1,3 @@
+defaults: [mask, _self_]
+name: random_mask
+penalty: 0.0

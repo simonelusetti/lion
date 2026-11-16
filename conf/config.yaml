@@ -1,0 +1,50 @@
+defaults:
+  - data: fewnerd
+  - encoder: bert-base-cased
+  - method: last
+  - tagger: mlp
+  - stage: train
+  - runtime: cuda
+  - _self_
+
+seed: 0
+paths:
+  cache: data/cache
+cache:
+  enabled: true
+  dtype: float16
+train:
+  epochs: 10
+  batch_size: 64
+  shuffle: false
+  bucket: false
+  lr: 0.001
+  weight_decay: 0.01
+  method_decay: 0.0
+  clip: 1.0
+  classifier_source: null
+  selector_source: null
+  freeze: []
+evaluation:
+  source: null
+  split: test
+analysis:
+  sources: []
+masks:
+  sources: []
+  split: train
+  metric: cosine
+  criterion: knn
+  k: 3
+  min_per_label: 5
+  max_types: 10
+  focals: 1000
+  exhaustive_context: 12
+  samples: 512
+  policy: representative
+forge:
+  store: outputs
+  verbose: false
+  tags: []
+  on_finish: null
+  exclude: [forge.*, paths.*]

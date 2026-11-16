@@ -1,0 +1,7 @@
+name: conll2003
+seed: 0
+validation_fraction: 0.1
+cap:
+  train: null
+  validation: null
+  test: null

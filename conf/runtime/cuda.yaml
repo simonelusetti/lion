@@ -1,0 +1,10 @@
+device: cuda:0
+devices: null
+parallel: true
+amp: bf16
+tf32: true
+threads: 4
+workers: 4
+batch_size: 64
+focal_chunk: 64
+attention_budget: 2000000

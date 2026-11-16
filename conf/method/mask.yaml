@@ -1,0 +1,8 @@
+name: mask
+kind: context_mask
+hidden: 128
+gate: anchored
+temperature: 1.0
+penalty: 0.1
+supervision: 0.0
+rhos: [0.0, 0.1, 0.25, 0.5, 0.75, 1.0]

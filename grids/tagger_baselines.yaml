@@ -1,0 +1,8 @@
+globals:
+  - encoder=bert-base-cased
+  - method=last
+  - tagger=mlp
+  - stage=train
+  - seed=0
+product:
+  data: [fewnerd, wikiann, conll2003, wnut, ud_upos, ud_deprel, ud_discourse, conll2000]

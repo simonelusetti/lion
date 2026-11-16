@@ -1,0 +1,5 @@
+defaults:
+  - config
+  - diagnostics: default
+  - override stage: diagnostics
+  - _self_

@@ -1,0 +1,4 @@
+dataset,tests_including_three_seeds,raw_p_le_005,BH_q_le_005,minimum_p,minimum_q
+ner_shared,166,54,0,0.005,0.051929824561403506
+ud_deprel,636,223,0,0.005,0.051929824561403506
+ud_upos,963,174,0,0.005,0.051929824561403506

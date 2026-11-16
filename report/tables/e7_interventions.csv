@@ -1,0 +1,433 @@
+dataset,sentence,position,intervention,original_index,focal_words,entity_type,old_mention,new_mention
+fewnerd,17320,7,neighbor,933,2,organization,Rockets,FAA
+fewnerd,17320,7,focal,933,2,person,Kermit Washington,Ziaur Rahman
+fewnerd,1757,5,neighbor,80,3,organization,Inc. of the United Methodist Church,LIX Legislature of the Mexican Congress
+fewnerd,1757,5,focal,80,3,organization,Red Bird Mission,California Coastal Commission
+fewnerd,7305,13,neighbor,366,3,product,Boeing 377 Stratocruiser,HP Indigo ElectroInk
+fewnerd,7305,13,focal,366,3,product,Clipper United States,Hinkley Point B
+fewnerd,11221,16,neighbor,577,3,organization,Bowling Green State University,Root Sports Rocky Mountain
+fewnerd,11221,16,focal,577,3,building,Rare Book Collection,George Street Playhouse
+fewnerd,4012,27,focal,185,4,organization,Ronne Antarctic Research Expedition,Isis South Provisional School
+fewnerd,13457,4,neighbor,731,1,building,Hotel Metropole,Arthur 's
+fewnerd,13457,4,focal,731,1,location,Yorkshire,Norwegian
+fewnerd,32407,5,neighbor,1777,6,person,Wintour,Tohir
+fewnerd,12127,6,neighbor,636,3,other,plasma protein,inflammatory response
+fewnerd,12127,6,focal,636,3,other,human serum albumin,Golden Sun Moth
+fewnerd,5442,15,focal,270,5,organization,Knights of the New Revelation,The Royal Academy of Arts
+fewnerd,23531,35,focal,1281,3,organization,Sporting de Gijón,Counts of Rapperswil
+fewnerd,27060,12,neighbor,1500,2,location,Tom Uglys Bridge,The Nantlle Ridge
+fewnerd,27060,12,focal,1500,2,location,Georges River,Cardiff Circle
+fewnerd,24373,17,neighbor,1331,7,organization,CDPQ,Reddit
+fewnerd,24236,12,focal,1319,1,location,India,Ogden
+fewnerd,12668,10,neighbor,677,3,location,London,Canada
+fewnerd,12668,10,focal,677,3,building,Covent Garden Theatre,Mater Public Hospital
+fewnerd,15216,4,focal,831,3,event,Small Business Week,Air Force Marathon
+fewnerd,24222,16,neighbor,1318,1,location,Deutenhausen,Łukówiec
+fewnerd,24222,16,focal,1318,1,location,Eching,Sagami
+fewnerd,17080,9,focal,921,2,event,LPGA Tour,Evo 2013
+fewnerd,15228,30,neighbor,834,2,person,Veasey,Ventus
+fewnerd,15228,30,focal,834,2,person,Hawkins brothers,Rex Beach
+fewnerd,31739,22,neighbor,1748,3,event,Battle of Gallipoli,Battle of Quilacura
+fewnerd,31739,22,focal,1748,3,event,First World War,Armed Forces Movement
+fewnerd,3810,0,neighbor,166,1,building,Savoy Hotel,Olivier Theatre
+fewnerd,3810,0,focal,166,1,person,Joe,Morgan
+fewnerd,26515,12,neighbor,1447,1,organization,Dons,3sat
+fewnerd,26515,12,focal,1447,1,person,Carlo,Ronald
+fewnerd,26799,1,neighbor,1465,2,organization,Bureau of Meteorology,Northern Territory Governmen
+fewnerd,26799,1,focal,1465,2,building,Perth Airport,Olivier Theatre
+fewnerd,35578,18,neighbor,1935,2,organization,Soviet Red Army,Chicago Musical College
+fewnerd,35578,18,focal,1935,2,person,P.M. Mugalev,Fabrizio Pignatelli
+fewnerd,4678,39,neighbor,223,1,location,RAAF Learmonth,Raja Ampat
+fewnerd,4678,39,focal,223,1,location,Exmouth,Elephantine
+fewnerd,25692,11,neighbor,1413,2,person,Babyface,Ricordi
+fewnerd,25692,11,focal,1413,2,person,Alan Menken,Corey Haim
+fewnerd,691,21,neighbor,34,2,art,Victoria the Great,Make Me Happy
+fewnerd,691,21,focal,34,2,person,Thorold Dickinson,Lavender Diamond
+fewnerd,19756,59,neighbor,1058,4,art,La puissance d'exister,Il capriccio drammatico
+fewnerd,19756,59,focal,1058,4,art,La sculpture de soi,Turner Classic Movies +1
+fewnerd,947,5,neighbor,49,2,other,Hemoglobin O-Arab,Saccopteryx leptura
+fewnerd,947,5,focal,49,2,other,Hemoglobin S,gastrointestinal complications
+fewnerd,27485,14,neighbor,1528,2,other,Mastership,TeNT
+fewnerd,27485,14,focal,1528,2,other,Rosenthal Award,Luff Award
+fewnerd,24388,2,neighbor,1336,1,other,Desmodium,thalamus
+fewnerd,24388,2,focal,1336,1,other,Tick-trefoil,Dihydrotestosterone
+fewnerd,473,8,focal,20,2,person,Kleinicke 's,Liliane Chenard
+fewnerd,4961,10,neighbor,232,2,location,the Byzantine Empires,Colorado River Aqueduct
+fewnerd,4961,10,focal,232,2,location,the Bulgarian,Scott Base
+fewnerd,26571,8,neighbor,1452,2,product,Schwinn Sting-Ray,Kurzweil K250
+fewnerd,26571,8,focal,1452,2,product,Krate lines,Gulfstream IV
+fewnerd,7430,5,focal,376,4,organization,U.S. General Services Administration,Pentecostal Churches of America
+fewnerd,5216,7,neighbor,252,2,location,Cicero,Calcutta
+fewnerd,5216,7,focal,252,2,person,Quintus Arrius,Dolph Ziggler
+fewnerd,18599,7,neighbor,998,4,person,Phillip Trimnell,Roger Redfarm
+fewnerd,18599,7,focal,998,4,other,Hall of Fame award,Atomic Energy Authority Act
+fewnerd,29546,5,neighbor,1633,1,location,Gold Coast,Columbia Island
+fewnerd,29546,5,focal,1633,1,location,Kumasi,Borrowdale
+fewnerd,29127,0,neighbor,1617,1,organization,Harvard,Dinamo
+fewnerd,29127,0,focal,1617,1,person,Knowles,Wiley
+fewnerd,34805,12,neighbor,1900,2,other,Centaurs 2060 Chiron,Blue-winged teal ducklings
+fewnerd,34805,12,focal,1900,2,other,Schwassmann-Wachmann 1,Obsessive-compulsive disorder
+fewnerd,27060,0,neighbor,1499,3,location,Georges River,Western Alps
+fewnerd,27060,0,focal,1499,3,location,Tom Uglys Bridge,the Tōmei Expressway
+fewnerd,19046,6,focal,1020,2,product,Berber flag,Keystone Service
+fewnerd,31309,5,neighbor,1737,1,organization,Harvard School of Dental Medicine,American Telephone and Telegraph Company
+fewnerd,31309,5,focal,1737,1,organization,HSDM,Alkarama
+fewnerd,9425,10,neighbor,461,11,location,Nicaragua,Pavilion
+fewnerd,31816,22,focal,1758,5,organization,Jesuit School of La Guardia,Hospital San Juan de Dios
+fewnerd,28029,4,focal,1561,4,product,Nissan Leaf all-electric car,Nissan Atlas 1-ton trucks
+fewnerd,5742,15,neighbor,288,7,organization,Northeastern University,NAS Jacksonville
+fewnerd,5742,15,focal,288,7,other,bachelor 's degree in sociology and English,CFL 's Most Outstanding Defensive Player Award
+fewnerd,37358,11,neighbor,2034,1,organization,Turkish Football Federation,Nintendo Entertainment System
+fewnerd,37358,11,focal,2034,1,organization,TFF,GAMP
+fewnerd,37586,10,neighbor,2046,3,art,ConCult,SCIEN
+fewnerd,37586,10,focal,2046,3,art,Closed Casket Activities,Fran Drescher Show
+fewnerd,18060,10,focal,971,2,product,Steve Irwin,Lotus Elite
+fewnerd,15245,47,neighbor,836,2,person,Jack Douglas,John Beard
+fewnerd,15245,47,focal,836,2,person,George Arnett,Dale Steyn
+fewnerd,6034,0,neighbor,302,1,organization,Sabé Sports de Bouna,Aluminum of Kazakhstan JSC
+fewnerd,6034,0,focal,302,1,person,Zaré,Antares
+fewnerd,19419,26,neighbor,1044,3,person,Frances Rogers,Steve Murphy
+fewnerd,19419,26,focal,1044,3,event,American Revolutionary War,League Championship Series
+fewnerd,10632,36,neighbor,541,2,person,e.e.cummings,Brāhmaṇas
+fewnerd,10632,36,focal,541,2,person,Allen Ginsberg,William Pinkethman
+fewnerd,33357,14,neighbor,1815,2,organization,Florida TV,Dark Empire
+fewnerd,33357,14,focal,1815,2,organization,Dusty Rhodes,Colorado State
+fewnerd,11237,4,neighbor,579,2,person,Wilson,Norway
+fewnerd,11237,4,focal,579,2,person,Russell Means,Albert Simonsson
+fewnerd,22463,24,neighbor,1230,5,location,Kielce,Feyt
+fewnerd,26429,15,focal,1442,1,location,Australia,Ogden
+fewnerd,395,2,focal,16,1,person,Attuquayefio,McBrearty
+fewnerd,10593,8,neighbor,538,3,location,Cambridge,Stade
+fewnerd,10593,8,focal,538,3,building,American Repertory Theatre,Glasgow Prestwick Airport
+fewnerd,19756,53,focal,1057,3,art,La puissance d'exister,El enfermo imaginario
+fewnerd,5761,2,focal,290,4,other,Sarbanes-Oxley Act of 2002,Hemagglutinin ( H )
+fewnerd,12967,12,neighbor,688,3,location,Enfield,Sagami
+fewnerd,12967,12,focal,688,3,location,West Ham United,North West England
+fewnerd,26068,16,neighbor,1423,3,person,Jay Electronica,Tim Spaull
+fewnerd,26068,16,focal,1423,3,person,Chip Tha Ripper,Thomas G. Alvord
+fewnerd,26613,17,neighbor,1455,2,person,Siol Murdoch,Torrie Wilson
+fewnerd,26613,17,focal,1455,2,person,Siol Gorrie,Mattias Olsson
+fewnerd,35648,16,neighbor,1939,2,location,Germans,Germany
+fewnerd,35648,16,focal,1939,2,person,Barbara Sukowa,Roger Redfarm
+fewnerd,31884,12,focal,1759,1,location,Rungwe,Jhapa
+fewnerd,20951,21,neighbor,1145,7,person,Marilyn Monroe,Alexander Ball
+fewnerd,4271,19,neighbor,199,3,organization,Southampton Management School,Expeditionary Strike Group
+fewnerd,4271,19,focal,199,3,organization,University of Southampton,9th Cavalry regiment
+fewnerd,12707,3,neighbor,681,3,organization,Air Florida,New Translation
+fewnerd,12707,3,focal,681,3,organization,Good Morning America,Spanish Architecture Schools
+fewnerd,25119,11,neighbor,1378,2,location,Ivan Mazepa,El Segundo
+fewnerd,25119,11,focal,1378,2,location,Kost Hordiienko,Sala Palatului
+fewnerd,34089,21,neighbor,1856,2,person,Heinrich Harrer,Viktor Leonenko
+fewnerd,34089,21,focal,1856,2,person,Fritz Kasparek,Christopher Stasheff
+fewnerd,34310,18,neighbor,1866,3,product,amantadine,EA-6A
+fewnerd,34310,18,focal,1866,3,other,influenza virus A,Jammin ' Contest
+fewnerd,30205,14,neighbor,1678,1,location,Commonwealth of Nations,North East Scotland
+fewnerd,30205,14,focal,1678,1,location,US,Northern
+fewnerd,5521,15,neighbor,279,5,other,Spanish,elephants
+fewnerd,26865,13,neighbor,1479,5,location,Pike County,Łódź Voivodeship
+fewnerd,26865,13,focal,1479,5,location,George W. Childs Recreation Site,Tin Shui Wai New Town
+fewnerd,18964,22,neighbor,1014,3,location,Sierra Madre Mountains,Sierra Gorda District
+fewnerd,18964,22,focal,1014,3,location,Trans-Mexican Volcanic Belt,Birket Qarun Formation
+fewnerd,8605,32,focal,423,5,building,Scottish Women 's Lacrosse Association,Church of St. Pius V
+fewnerd,25606,7,focal,1404,2,location,Estes Park,Yaquina River
+fewnerd,27610,19,focal,1540,2,person,Hal Needham,Tim Spaull
+fewnerd,10253,7,focal,507,9,organization,South Kensington Schools of the Royal College of Art,e British House of Commons constituency of Swansea East
+fewnerd,35648,24,neighbor,1940,2,location,American,Derby
+fewnerd,35648,24,focal,1940,2,person,Eddie Constantine,Pat Boone
+fewnerd,18925,2,neighbor,1009,2,other,Hyper-phosphorylation,"1,4-butanediol"
+fewnerd,18925,2,focal,1009,2,other,tau protein,Jolt Awards
+fewnerd,947,2,neighbor,48,2,other,Hemoglobin S,forsythoside B
+fewnerd,947,2,focal,48,2,other,Hemoglobin O-Arab,Burkholderia plantarii
+fewnerd,5467,17,focal,277,3,organization,Tennessee State Constitution,City of Hope
+fewnerd,25135,5,neighbor,1379,1,building,Petworth House,Albrook Field
+fewnerd,25135,5,focal,1379,1,person,Egremont,Pompidou
+fewnerd,20188,2,neighbor,1083,3,person,Saint Zenon,Albert Simonsson
+fewnerd,20188,2,focal,1083,3,building,The Ikalto monastery,London Gatwick Airport
+fewnerd,8059,16,neighbor,398,1,location,Arizona,Kensington
+fewnerd,8059,16,focal,398,1,building,KFXY,Ballydoyle
+fewnerd,26280,5,neighbor,1431,1,location,Torontonians,Boronia
+fewnerd,26280,5,focal,1431,1,organization,Porter,Danger
+fewnerd,21983,5,neighbor,1205,2,location,Kızlaç,Gipuzkoa
+fewnerd,21983,5,focal,1205,2,location,Taurus Mountains,Bale Mountains
+fewnerd,2136,0,neighbor,96,2,other,Golden Ball,binary stars
+fewnerd,2136,0,focal,96,2,person,Carin Jennings,Pancho Villa
+fewnerd,3413,6,neighbor,143,4,location,Swannanoa,Cornwood
+fewnerd,3413,6,focal,143,4,location,Western Carolina Veterans Cemetery,Los Angeles Center Studios
+fewnerd,12428,7,focal,657,3,location,Red Rock Creek,Duchy of Milan
+fewnerd,2463,10,neighbor,107,5,person,Pearl Lowe,Liz Kendall
+fewnerd,2463,10,focal,107,5,building,Shanghai 's Holy Trinity Cathedral,Oklahoma 's Lloyd Noble Center
+fewnerd,2443,7,neighbor,102,4,organization,Connecticut League of Women Voters Consensus Project,Joey Fund and the Cystic Fibrosis Foundation
+fewnerd,2443,7,focal,102,4,organization,Cheshire Public Library Board,Communist Party of Lithuania
+fewnerd,12657,21,focal,675,2,person,Christopher Hampton,Gloria Logan
+fewnerd,36864,12,neighbor,2009,1,location,British,Brook
+fewnerd,36864,12,focal,2009,1,location,Georgia,Northern
+fewnerd,8906,13,neighbor,435,3,location,Kiev Governorate,Sheffield Pike
+fewnerd,8906,13,focal,435,3,organization,Leningrad State University,British royal family
+fewnerd,37501,8,neighbor,2041,3,location,St. Vincent Sound,Midtown Omaha area
+fewnerd,37501,8,focal,2041,3,location,St. George Sound,Pai and Nan
+fewnerd,4763,14,neighbor,229,3,person,Gold Brose,Philippe Ricord
+fewnerd,4763,14,focal,229,3,other,Silver Slipper Stakes,protocol Ayub Khan
+fewnerd,30577,2,neighbor,1696,2,person,Ali Daei,Tim Spaull
+fewnerd,30577,2,focal,1696,2,organization,Rah Ahan,Kenora Thistles
+fewnerd,22302,12,neighbor,1221,1,person,George Burley,Corey Haim
+fewnerd,22302,12,focal,1221,1,organization,Scotland,Dell
+fewnerd,20346,5,focal,1095,4,building,San Diego Public Library,National Library of Israel
+fewnerd,30174,18,neighbor,1674,3,person,Wilda Van Dusen,Carola of Vasa
+fewnerd,30174,18,focal,1674,3,organization,University of Connecticut,National Congress Party
+fewnerd,21539,15,neighbor,1178,3,organization,FIDE,Ottobock
+fewnerd,21539,15,focal,1178,3,event,World Chess Championship,2011 Stanley Cup
+fewnerd,9101,4,neighbor,441,1,organization,Djurgårdens IF,Neurophysiological Laboratories
+fewnerd,9101,4,focal,441,1,person,Zirath,Niimi
+fewnerd,11489,15,neighbor,596,2,organization,Indian Corps,Union Railways
+fewnerd,11489,15,focal,596,2,organization,Western Front,Premier Inn
+fewnerd,15832,18,neighbor,876,3,organization,MI6,ADBA
+fewnerd,15832,18,focal,876,3,organization,Secret Intelligence Service,the Mafia Commission
+fewnerd,36235,12,neighbor,1972,2,person,Kenneth Grant,Frances Dee
+fewnerd,36235,12,focal,1972,2,organization,Typhonian Thelema,Daejeon KHNP
+fewnerd,5982,1,neighbor,300,2,product,Linux,Niagara
+fewnerd,5982,1,focal,300,2,organization,Linux Counte,Red Turban
+fewnerd,10051,5,neighbor,503,5,location,Los Angeles,East Village
+fewnerd,10051,5,focal,503,5,location,Westwood Village Memorial Park Cemetery,Franklin United Methodist Community Home
+fewnerd,16206,21,neighbor,890,2,organization,92nd ( M ) Bde,Diplomatic Academy of the MFA
+fewnerd,16206,21,focal,890,2,organization,Third Army,Old Main
+fewnerd,13413,16,neighbor,728,2,organization,Jezebel,PLU
+fewnerd,13413,16,focal,728,2,organization,Paper Machete,Nacional Potosí
+fewnerd,10976,9,focal,560,2,location,Fort William,Mount Fuji
+fewnerd,1897,42,neighbor,86,4,event,2010 Iraqi elections,American Red Summer
+fewnerd,1897,42,focal,86,4,organization,Arab Socialist Ba'ath Party,British Caribbean Currency Board
+fewnerd,4495,11,neighbor,217,7,organization,Cardiff University,Sophia University
+fewnerd,4495,11,focal,217,7,organization,University College of South Wales and Monmouthshire,President and Director of Advance & amp
+fewnerd,27609,30,neighbor,1538,1,person,Charles,Warner
+fewnerd,27609,30,focal,1538,1,location,English,Bengali
+fewnerd,24374,1,neighbor,1333,4,organization,Royal Navy,Apollo 440
+fewnerd,24374,1,focal,1333,4,product,HMS `` Annan '',HMS `` Chinkara ''
+fewnerd,18961,4,neighbor,1011,2,location,Sichuan,Bury
+fewnerd,18961,4,focal,1011,2,person,Fu Jian,Giovanni Hidalgo
+fewnerd,37437,0,neighbor,2037,7,art,Legend of Mister John of Procida,Snow White and the Seven Dwarfs
+fewnerd,23829,7,neighbor,1291,2,organization,Free Will Baptist organizations,Natural Environment Research Council
+fewnerd,23829,7,focal,1291,2,person,Hosea Quimby,Marek Brodzki
+fewnerd,10947,18,neighbor,558,4,organization,RSMC,CWC
+fewnerd,10947,18,focal,558,4,organization,regional specialised meteorological centre,St Thomas 's Hospital
+fewnerd,33490,7,neighbor,1830,2,building,New Mills Newtown railway station,Erik Nielsen Whitehorse International Airport
+fewnerd,33490,7,focal,1830,2,location,Peak District,Australia i
+fewnerd,4032,0,focal,186,1,person,Winckelmann,Pozzebon
+fewnerd,25095,7,focal,1371,3,organization,Relix Records label,Northland Enterprises LLC
+fewnerd,16371,0,neighbor,895,2,location,Taiwanese,Hancock
+fewnerd,16371,0,focal,895,2,art,Siao Yu,Fournier Register
+fewnerd,9425,0,focal,460,1,location,Nicaragua,AK
+fewnerd,34223,9,neighbor,1864,1,other,Sikuliarsiujuittuq,H2AK119Ub1
+fewnerd,34223,9,focal,1864,1,other,Procyon,Pelican
+fewnerd,9888,4,neighbor,487,3,organization,Formula One,Grace Lines
+fewnerd,9888,4,focal,487,3,event,Italian Grand Prix,Operation Junction City
+conll2003,3301,2,neighbor,1952,1,ORG,PHILADELPHIA,Hezb-i-Islami
+conll2003,3301,2,focal,1952,1,LOC,HOUSTON,BOGOTA
+conll2003,1635,1,neighbor,921,2,ORG,S&P,Ligier
+conll2003,1635,1,focal,921,2,ORG,MOODY 'S,Flamurtari Vlore
+conll2003,2590,2,neighbor,1527,1,LOC,VAIL,Heathrow
+conll2003,2590,2,focal,1527,1,LOC,Colorado,Algeria
+conll2003,1787,0,focal,1034,1,LOC,Chicago,Trinidad
+conll2003,339,7,neighbor,191,2,LOC,Indonesia,Bosnia
+conll2003,339,7,focal,191,2,PER,Mia Audina,Peter Laca
+conll2003,2598,1,neighbor,1530,2,PER,Pierre Lueders,Enrique Centeno
+conll2003,2598,1,focal,1530,2,ORG,Canada I,News Corp
+conll2003,2677,4,neighbor,1576,1,PER,Xu Nannan,Michael Conlon
+conll2003,2677,4,focal,1576,1,LOC,China,Hawaii
+conll2003,3240,4,neighbor,1917,3,LOC,South Korea,Middle Kingdom
+conll2003,3240,4,focal,1917,3,PER,Kim Do Hoon,Juan Carlos Pinero
+conll2003,1126,3,focal,637,3,ORG,New York Commodities,Communist United Marxist-Leninist
+conll2003,276,0,neighbor,143,2,PER,Murray,Jackson
+conll2003,276,0,focal,143,2,PER,M. Bevan,Els Callens
+conll2003,1507,0,focal,847,1,LOC,RANGOON,Dhahran
+conll2003,692,0,neighbor,395,1,ORG,AC Milan,Detroit Tigers
+conll2003,692,0,focal,395,1,PER,Costa,Saddam
+conll2003,134,0,focal,61,2,PER,Ijaz Ahmad,Padraig Harrington
+conll2003,1795,1,neighbor,1038,2,PER,Mike McCurry,Stefano Pescosolido
+conll2003,1795,1,focal,1038,2,LOC,White House,Santa Barbara
+conll2003,1387,5,neighbor,775,1,MISC,Jones,Nigerian
+conll2003,1387,5,focal,775,1,MISC,Dow,Vietnamese
+conll2003,2165,2,neighbor,1266,1,LOC,MUNICH,HARARE
+conll2003,2165,2,focal,1266,1,LOC,Germany,Baghdad
+conll2003,1870,0,focal,1081,1,LOC,ROME,Pretoria
+conll2003,1657,1,neighbor,939,5,LOC,NJ,Bombay
+conll2003,1657,1,focal,939,5,ORG,First Union Capital Markets Corp.,Southern New England Telecommunications Corp.
+conll2003,948,0,focal,533,1,LOC,WARSAW,Pemberton
+conll2003,663,0,focal,379,1,ORG,Nice,Luton
+conll2003,2857,25,neighbor,1687,1,LOC,London,Bahrain
+conll2003,2857,25,focal,1687,1,ORG,Saracens,Mohammedia
+conll2003,470,0,focal,277,1,ORG,PORTLAND,Stenhousemuir
+conll2003,1475,8,neighbor,830,1,LOC,Jakarta,Caribbean
+conll2003,1475,8,focal,830,1,MISC,Indonesian,Nepali
+conll2003,3265,0,focal,1931,2,MISC,CENTRAL DIVISION,EASTERN DIVISION
+conll2003,2262,0,focal,1335,1,LOC,BANGKOK,LONDON
+conll2003,870,11,neighbor,490,2,LOC,England,Lisbon
+conll2003,870,11,focal,490,2,PER,Simon Parke,Michael Posner
+conll2003,3365,2,neighbor,1986,1,ORG,ANAHEIM,NEWCASTLE
+conll2003,3365,2,focal,1986,1,LOC,PITTSBURGH,MONTGOMERY
+conll2003,60,2,neighbor,32,2,LOC,Canada,Charleston
+conll2003,60,2,focal,32,2,PER,Dominick Gauthier,Ferdy Vierklau
+conll2003,148,15,neighbor,68,1,ORG,Udinese,Mostostal
+conll2003,148,15,focal,68,1,MISC,Engllsh,Corsican
+conll2003,3083,0,neighbor,1821,1,ORG,Tottenham,Senate
+conll2003,3083,0,focal,1821,1,ORG,Coventry,Huddersfield
+conll2003,1761,0,focal,1012,2,LOC,ST. LOUIS,Donje Ljupce
+conll2003,3055,2,neighbor,1802,1,ORG,Dunfermline,al-Tadamun
+conll2003,3055,2,focal,1802,1,ORG,Aberdeen,Eugene
+conll2003,1078,4,neighbor,606,2,LOC,Pakistan,Kosovo
+conll2003,1078,4,focal,606,2,LOC,New Zealand,Tel Aviv
+conll2003,2618,5,neighbor,1543,2,ORG,Canada I,Sudan Airways
+conll2003,2618,5,focal,1543,2,PER,Pierre Lueders,Marta Fajardo
+conll2003,293,12,neighbor,154,2,LOC,Australia,Montreal
+conll2003,293,12,focal,154,2,MISC,World Series,Western Australian
+conll2003,3133,0,neighbor,1851,1,PER,Matthew Burke,Pete Wilson
+conll2003,3133,0,focal,1851,1,LOC,Australia,Moscow
+conll2003,1370,4,neighbor,764,1,MISC,Moslems,French-registered
+conll2003,1370,4,focal,764,1,LOC,Kazanluk,Kunar
+conll2003,2183,0,focal,1277,1,LOC,LONDON,Balochistan
+conll2003,1414,20,focal,789,2,LOC,Latin America,Saudi Arabia
+conll2003,2716,3,focal,1608,2,MISC,WORLD CUP,SUPER CUP
+conll2003,2823,0,focal,1660,1,MISC,English,Tour
+conll2003,2188,4,neighbor,1281,1,MISC,GMT,Kurds
+conll2003,2188,4,focal,1281,1,LOC,London,Sudan
+conll2003,3404,2,neighbor,2011,1,ORG,VOLENDAM,El-Watan
+conll2003,3404,2,focal,2011,1,ORG,PSV,Palmans
+conll2003,3061,0,neighbor,1805,1,ORG,Falkirk,Banespa
+conll2003,3061,0,focal,1805,1,ORG,Dundee,Disney
+conll2003,1,1,focal,1,2,PER,Nadim Ladki,Sigeki Maruyama
+conll2003,1926,2,focal,1117,1,MISC,Treasuries,Mozambican
+conll2003,627,2,neighbor,361,3,PER,Bruno N'Gotty,Gilbert Facchinetti
+conll2003,627,2,focal,361,3,ORG,Paris St Germain,Bank of Finland
+conll2003,591,0,focal,345,1,LOC,BONN,KIEV
+conll2003,102,1,neighbor,45,2,PER,Harris,Gallagher
+conll2003,102,1,focal,45,2,PER,Wasim Akram,Bernd Karbacher
+conll2003,2598,0,neighbor,1529,2,PER,Pierre Lueders,Simon Frenz
+conll2003,2598,0,focal,1529,2,ORG,Canada I,Aston Villa
+conll2003,1542,40,neighbor,870,1,ORG,ASEAN,Piacenza
+conll2003,1542,40,focal,870,1,ORG,ILO,ONIC
+conll2003,1680,1,neighbor,962,1,LOC,Iowa-S,KIEV
+conll2003,1680,1,focal,962,1,LOC,Minn,Hub
+conll2003,1909,19,focal,1106,3,ORG,Coe and Clerici,Loxley Publications Plc
+conll2003,2864,0,focal,1699,1,LOC,LONDON,FINLAND
+conll2003,2200,10,neighbor,1288,1,ORG,BBC,Peterborough
+conll2003,2200,10,focal,1288,1,MISC,Newsnight,Syrians
+conll2003,462,0,focal,273,1,ORG,DALLAS,Corinthians
+conll2003,493,0,focal,293,2,ORG,NEW ENGLAND,LOS ANGELES
+conll2003,971,0,focal,543,1,LOC,PRAGUE,Hebron
+conll2003,1680,0,neighbor,961,1,LOC,Minn,Abuja
+conll2003,1680,0,focal,961,1,LOC,Iowa-S,Zadar
+conll2003,879,3,neighbor,498,2,PER,DURBAN,Aishwarya
+conll2003,879,3,focal,498,2,LOC,South Africa,Wolf Point
+conll2003,3102,2,focal,1840,3,MISC,F.A. Challenge Cup,U.S. Tennis Association
+conll2003,2979,0,focal,1755,1,ORG,Swindon,Senate
+conll2003,2187,4,neighbor,1279,2,PER,Rosemary Bennett,Craig Parry
+conll2003,2187,4,focal,1279,2,ORG,London Newsroom,Istanbul Newsroom
+conll2003,1231,18,neighbor,686,1,LOC,Burkina Faso,South Korea
+conll2003,1231,18,focal,686,1,MISC,African,HIV
+conll2003,2963,0,focal,1747,1,ORG,Middlesbrough,Baltimore
+conll2003,2474,1,neighbor,1449,2,LOC,France,Budapest
+conll2003,2474,1,focal,1449,2,PER,Regine Cavagnoud,Mika Hakkinen
+conll2003,2903,0,focal,1713,1,ORG,Hibernian,Malbak
+conll2003,2257,23,neighbor,1330,2,LOC,Rangoon,Managua
+conll2003,2257,23,focal,1330,2,LOC,Shwe Dagon,ADDIS ABABA
+conll2003,2569,4,neighbor,1509,1,PER,Vadim Sashurin,Sebastien Lareau
+conll2003,2569,4,focal,1509,1,LOC,Belarus,CO
+conll2003,3090,0,neighbor,1829,1,ORG,Southend,Chonan
+conll2003,3090,0,focal,1829,1,ORG,Barnsley,Atria
+conll2003,1909,6,neighbor,1105,1,LOC,Fos,Newbury
+conll2003,1909,6,focal,1105,1,LOC,Maracaibo,Khartoum
+conll2003,673,0,neighbor,387,1,PER,Stickroth,Wasim
+conll2003,673,0,focal,387,1,ORG,Bochum,Aaxis
+conll2003,2706,0,neighbor,1599,2,LOC,Bali,Bahrain
+conll2003,2706,0,focal,1599,2,LOC,TEMBAU DENPASAR,KUALA LUMPUR
+conll2003,3256,0,focal,1921,1,LOC,ATLANTIC,LIBERIA
+conll2003,1820,7,neighbor,1048,1,LOC,Minn,Woodridge
+conll2003,1820,7,focal,1048,1,ORG,USDA,Dia
+conll2003,15,0,focal,6,1,PER,Bitar,Ruehe
+conll2003,1323,19,focal,740,1,ORG,Interrosimpex,NEWCASTLE
+conll2003,3016,0,focal,1773,1,ORG,Wycombe,Csepel
+conll2003,3069,0,neighbor,1811,2,ORG,Montrose,Tass
+conll2003,3069,0,focal,1811,2,ORG,Ross County,US Luxembourg
+conll2003,1462,0,focal,821,1,PER,SANTIAGO,MASTERKOVA
+conll2003,2444,3,focal,1434,2,PER,Renate Goetschl,Abyss DeJesus
+conll2003,2458,4,neighbor,1440,1,PER,Heidi Zurbriggen,Laurence McQuillan
+conll2003,2458,4,focal,1440,1,LOC,Switzerland,Montreal
+conll2003,779,0,focal,441,1,ORG,Valencia,Khmer
+conll2003,2834,0,neighbor,1668,1,ORG,Ebbw Vale,Fokker Aviation
+conll2003,2834,0,focal,1668,1,ORG,Treorchy,SPORTING
+conll2003,2612,2,neighbor,1539,1,LOC,IGLS,RABAT
+conll2003,2612,2,focal,1539,1,LOC,Austria,Brazil
+conll2003,614,1,focal,355,2,ORG,Arminia Bielefeld,GKS Belchatow
+conll2003,1544,1,focal,871,1,ORG,ILO,Borac
+conll2003,343,0,neighbor,193,2,LOC,Denmark,Bristol
+conll2003,343,0,focal,193,2,PER,Camilla Martin,Olo Brown
+conll2003,3064,4,neighbor,1807,1,ORG,Partick,Hina
+conll2003,3064,4,focal,1807,1,ORG,Stirling,Justice
+conll2003,3312,3,neighbor,1958,2,ORG,Vancouver,Cleveland
+conll2003,3312,3,focal,1958,2,ORG,SAN ANTONIO,Kotaik Abovyan
+conll2003,2545,1,neighbor,1488,2,LOC,Italy,Romania
+conll2003,2545,1,focal,1488,2,PER,Barbara Merlin,Grant Stafford
+conll2003,2495,1,neighbor,1475,2,LOC,Austria,Springfield
+conll2003,2495,1,focal,1475,2,PER,Stefanie Schuster,Kimiko Date
+conll2003,1772,0,focal,1026,1,LOC,CHICAGO,SWEDEN
+conll2003,3215,1,focal,1899,3,ORG,Hapoel Petah Tikva,Hapoel Beit She'an
+conll2003,289,2,neighbor,149,2,LOC,Australia,Bombay
+conll2003,289,2,focal,149,2,LOC,West Indies,Tel Aviv
+conll2003,191,0,focal,91,1,LOC,LONDON,SCOTLAND
+conll2003,3297,2,neighbor,1950,1,ORG,MILWAUKEE,Zirka-Nibas
+conll2003,3297,2,focal,1950,1,LOC,WASHINGTON,N'DJAMENA
+conll2003,2616,7,neighbor,1542,2,PER,Guenther Huber,Bachirou Salou
+conll2003,2616,7,focal,1542,2,PER,Antonio Tartaglia,Marta Fajardo
+conll2003,2731,1,neighbor,1618,2,LOC,China,Syria
+conll2003,2731,1,focal,1618,2,PER,Xuc Rulhong,Worku Bekila
+conll2003,3301,0,neighbor,1951,1,LOC,HOUSTON,Amsterdam-Rotterdam-Antwerp
+conll2003,3301,0,focal,1951,1,ORG,PHILADELPHIA,Jumbish-i-Milli
+conll2003,2630,1,neighbor,1553,2,PER,Sean Olsson,Gregory Carraz
+conll2003,2630,1,focal,1553,2,ORG,Britain I,Tel Aviv
+conll2003,2578,1,focal,1519,1,PER,Sashurin,Lanusse
+conll2003,543,0,neighbor,315,2,LOC,PITTSBURGH,DIYARBAKIR
+conll2003,543,0,focal,315,2,ORG,SAN DIEGO,PSV Eindhoven
+conll2003,1675,0,focal,955,1,PER,Frederick,Cheung
+conll2003,3450,0,neighbor,2041,1,LOC,Ireland,Midwest
+conll2003,3450,0,focal,2041,1,PER,Charlton,Gerard
+conll2003,2343,2,neighbor,1379,1,ORG,WTO,Lehman
+conll2003,2343,2,focal,1379,1,LOC,Singapore,Beirut
+conll2003,2618,7,neighbor,1544,2,PER,Pierre Lueders,Ian Woosnam
+conll2003,2618,7,focal,1544,2,PER,Dave MacEachern,Eric Wymeersch
+conll2003,304,12,focal,163,1,MISC,Australian,Germans
+conll2003,2485,1,neighbor,1466,2,LOC,France,Ankara
+conll2003,2485,1,focal,1466,2,PER,Carole Montillet,Mike Gatting
+conll2003,2851,16,neighbor,1684,1,ORG,Hibernian,Bessemer
+conll2003,2851,16,focal,1684,1,PER,Wright,Lambert
+conll2003,610,1,focal,353,3,ORG,SV 1860 Munich,Physicians Insurance Co
+conll2003,2584,4,neighbor,1524,1,PER,Petra Behle,Edna Fernandes
+conll2003,2584,4,focal,1524,1,LOC,Germany,Belarus
+conll2003,210,10,neighbor,106,2,LOC,U.S.,SOFIA
+conll2003,210,10,focal,106,2,PER,Don Robertson,Greg Frost
+conll2003,395,2,neighbor,224,1,ORG,ANAHEIM,al-Akhbar
+conll2003,395,2,focal,224,1,LOC,BUFFALO,KARACHI
+conll2003,1477,14,neighbor,831,3,MISC,East Timorese-born,No 1676/96
+conll2003,1477,14,focal,831,3,PER,Jose Ramos Horta,Pier Francesco Chili
+conll2003,1936,4,neighbor,1127,2,PER,Stephen Nisbet,Roberto Carretero
+conll2003,1936,4,focal,1127,2,ORG,International Bonds,Guinness Peat
+conll2003,2556,4,neighbor,1498,1,PER,Catherine Borghi,Tony Gwynn
+conll2003,2556,4,focal,1498,1,LOC,Switzerland,Azerbaijan
+conll2003,2754,2,neighbor,1626,2,LOC,Japan,Dunedin
+conll2003,2754,2,focal,1626,2,PER,Kusunose Shiho,Hermawan Susanto
+conll2003,1660,0,neighbor,943,1,LOC,Fla.,GENEVA
+conll2003,1660,0,focal,943,1,LOC,TALLAHASSEE,HELSINKI
+conll2003,544,0,neighbor,317,1,LOC,TAMPA BAY,ADDIS ABABA
+conll2003,544,0,focal,317,1,ORG,WASHINGTON,Kolbenschmidt
+conll2003,2518,2,focal,1479,3,MISC,Nation 's Cup,Producer Prices Index
+conll2003,843,4,neighbor,473,2,ORG,Atalanta,WorldCom
+conll2003,843,4,focal,473,2,PER,Filippo Inzaghi,Saqlain Mushtaq
+conll2003,1430,2,neighbor,798,1,LOC,Buenos Aires,Red River
+conll2003,1430,2,focal,798,1,LOC,Quequen,Jaora
+conll2003,795,18,neighbor,454,3,ORG,Atletico Madrid,PLO Council
+conll2003,795,18,focal,454,3,PER,Jose Luis Caminero,Hans de Clerq
+conll2003,735,2,neighbor,425,2,PER,Ronaldo,Lien
+conll2003,735,2,focal,425,2,PER,Davor Suker,Natalya Sadova
+conll2003,2462,5,neighbor,1444,1,PER,Ingeborg Helen,Zinzan Brooke
+conll2003,2462,5,focal,1444,1,LOC,Norway,CO
+conll2003,185,1,neighbor,87,2,LOC,Yugoslavia,Sardinia
+conll2003,185,1,focal,87,2,ORG,Partizan Belgrade,Fokker Aviation
+conll2003,3373,1,neighbor,1995,2,ORG,Toronto,Chelsea
+conll2003,3373,1,focal,1995,2,ORG,NY RANGERS,Piper Jaffray

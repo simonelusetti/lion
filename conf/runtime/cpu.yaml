@@ -1,0 +1,10 @@
+device: cpu
+devices: null
+parallel: false
+amp: none
+tf32: false
+threads: 4
+workers: 0
+batch_size: 16
+focal_chunk: 16
+attention_budget: 500000

@@ -1,0 +1,5 @@
+defaults: [mask, _self_]
+name: supervised_mask
+gate: sigmoid
+penalty: 0.0
+supervision: 1.0

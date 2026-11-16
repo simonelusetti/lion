@@ -1,0 +1,2 @@
+defaults: [_mix, _self_]
+name: soft_mix

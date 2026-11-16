@@ -1,0 +1,4 @@
+globals:
+  - stage=layerwise
+product:
+  seed: [0, 1, 2]

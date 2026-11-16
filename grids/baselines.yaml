@@ -1,0 +1,4 @@
+product:
+  data: [fewnerd, ud_upos, ud_deprel, ud_discourse, conll2000]
+  method: [last, global_mix, soft_mix, hard_mix]
+  seed: [0, 1, 2]

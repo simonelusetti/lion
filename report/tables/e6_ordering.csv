@@ -1,0 +1,5 @@
+dataset,seeds,cells_per_seed_min,cells_per_seed_max,correct_order_mean,correct_order_std
+ud_upos,3,20,20,0.11666666666666665,0.02886751345948128
+ud_deprel,3,20,20,0.2333333333333333,0.10408329997330662
+ud_discourse,3,210,210,0.31269841269841275,0.022503883934536232
+ner_shared,3,2,2,0.5,0.0

@@ -1,0 +1,2 @@
+defaults: [_bert, _self_]
+name: bert-base-uncased

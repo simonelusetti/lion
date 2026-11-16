@@ -1,0 +1,15 @@
+experiment,dataset,reason,skipped_cells_or_candidates
+e3,ud_deprel,fewer than two domains meet train/validation/test support,129
+e3,ud_discourse,fewer than two domains meet train/validation/test support,66
+e3,ud_upos,fewer than two domains meet train/validation/test support,24
+e4,ud_deprel,fewer than two domains meet train/validation/test support,43
+e4,ud_discourse,fewer than two domains meet train/validation/test support,22
+e4,ud_upos,fewer than two domains meet train/validation/test support,8
+e5,ner_shared,insufficient tokens/documents in label/domain/stratum,122
+e5,ud_deprel,insufficient tokens/documents in label/domain/stratum,36084
+e5,ud_discourse,insufficient tokens/documents in label/domain/stratum,249480
+e5,ud_upos,insufficient tokens/documents in label/domain/stratum,11277
+e7,conll2003,no distinct same-type train mention with matching per-word WordPiece lengths,2
+e7,conll2003,no neighboring entity in radius,46
+e7,fewnerd,no distinct same-type train mention with matching per-word WordPiece lengths,13
+e7,fewnerd,no neighboring entity in radius,27
