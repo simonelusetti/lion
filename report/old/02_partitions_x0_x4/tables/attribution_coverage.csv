@@ -1,0 +1,6 @@
+dataset,sampled_test_focals,word_pairs,word_pairs_with_nuisance_scores,missing_n_reason
+ud_upos,500,5496,4322,label/domain does not meet common document-CV probe support
+ud_deprel,500,5496,2542,label/domain does not meet common document-CV probe support
+ud_discourse,500,8851,4429,label/domain does not meet common document-CV probe support
+gum_upos,500,8851,7391,label/domain does not meet common document-CV probe support
+ner_shared,500,8752,8752,label/domain does not meet common document-CV probe support

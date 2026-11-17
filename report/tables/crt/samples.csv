@@ -1,0 +1,4 @@
+split,sentences,eligible_focals,no_eligible_sentence,crt_rows
+train,12544,186393,312,0
+validation,2001,22566,92,1909
+test,2077,22250,101,1976

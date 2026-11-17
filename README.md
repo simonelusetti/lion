@@ -277,8 +277,8 @@ focal samples receive token metrics, not span scores. Dataset identity, erasure,
 and substitutions provide diagnostics under the assumptions documented in the
 plan; they do not by themselves establish a causal nuisance effect.
 
-The completed study is documented in [report/README.md](report/README.md), with
-the actual implementation, interpreted results, supporting CSVs, and figures.
+The latest study is documented in [report/README.md](report/README.md), with
+earlier experiment batches archived under [report/old/](report/old/README.md).
 
 ## Port from exploration
 
@@ -295,3 +295,13 @@ reproductions of the old combined-split reports.
 The earlier exploratory reports and specialized post-hoc geometry studies remain
 in `../exploration` as research references. Add new experiments here as small
 methods or stages with configs. Working conventions are recorded in `AGENTS.md`.
+
+## Mask-rule pilot grid
+
+Run the shared caches, frozen scorers, subset selection and independent rule × penalty cells with:
+
+```bash
+.venv/bin/python -B -m lion.pilot.run runtime.workers=0 runtime.batch_size=64
+```
+
+The full product is in `grids/pilot_cells.yaml`; the default runner batches its 1,320 independent cells into 60 vectorized fits. Protocol and sampling choices are in `lion/pilot/IMPLEMENTATION.md`.

@@ -1,0 +1,21 @@
+results: results/partition
+cache: data/cache/partition
+sources: results/banks.json
+datasets: [ud_upos, ud_deprel, ud_discourse, gum_upos, ner_shared]
+linear: [0, 1, 2, 3, 5, 8]
+tree: [1, 2, 3]
+folds: 5
+bootstrap: 200
+bootstrap_seed: 2718
+gain_fraction: 0.9
+nuisance_fraction: 0.5
+amortized_accuracy_tolerance: 0.01
+amortized_f1_tolerance: 0.01
+amortized_kl_tolerance: 0.02
+occlusion_probability: 0.15
+occlusion_draws: 3
+attribution_focals: 500
+content_upos: [ADJ, ADV, NOUN, PROPN, VERB]
+function_upos: [ADP, AUX, CCONJ, DET, PART, PRON, SCONJ]
+kmeans_iterations: 100
+kmeans_tolerance: 0.0001

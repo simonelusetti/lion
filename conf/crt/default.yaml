@@ -1,0 +1,14 @@
+results: results/crt
+cache: data/cache/crt
+radius: 16
+draws: 200
+offsets: [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]
+pairs: [[-3, -2], [-2, -1], [1, 2], [2, 3]]
+row_seed: 20261117
+noise_seed: 123456
+sample_seed: 271828
+mlm_batch_size: 64
+row_batch_size: 32
+benchmark_fraction: 0.01
+budget_seconds: 10800
+resume: true

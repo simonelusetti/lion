@@ -23,4 +23,5 @@ def configure(cfg):
 
 def autocast(cfg):
     return torch.autocast(device_type=torch.device(cfg.runtime.device).type,
-                          dtype=torch.bfloat16, enabled=cfg.runtime.amp == "bf16")
+                          dtype=torch.float16 if cfg.runtime.amp == "fp16" else torch.bfloat16,
+                          enabled=cfg.runtime.amp in ("bf16", "fp16"))

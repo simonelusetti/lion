@@ -1,0 +1,6 @@
+dataset,all_focals,paired_nonempty_inside_outside
+ud_upos,6986,5388
+ud_deprel,6986,5388
+ud_discourse,22363,18421
+gum_upos,22363,18421
+ner_shared,13635,11845

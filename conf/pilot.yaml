@@ -1,0 +1,13 @@
+defaults:
+  - zfree
+  - pilot: default
+  - override stage: pilot
+  - _self_
+invariance:
+  results: results/pilot
+  datasets: [ud_upos, ud_deprel, gum_upos, ud_discourse]
+diagnostics:
+  probe_min: {train: 8, validation: 4, test: 4}
+partition:
+  kmeans_iterations: 50
+  kmeans_tolerance: 0.0001

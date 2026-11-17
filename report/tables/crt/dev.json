@@ -1,0 +1,17 @@
+{
+  "synthetic": {
+    "accuracy": 0.8154746294021606,
+    "macro_f1": 0.6775032877922058,
+    "selected_epoch": 10
+  },
+  "upos": {
+    "accuracy": 0.970043420791626,
+    "macro_f1": 0.9183937311172485,
+    "selected_epoch": 10
+  },
+  "deprel": {
+    "accuracy": 0.8761410713195801,
+    "macro_f1": 0.6400328874588013,
+    "selected_epoch": 10
+  }
+}

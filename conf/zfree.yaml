@@ -1,0 +1,8 @@
+defaults:
+  - invariance_stage1
+  - zfree: default
+  - _self_
+invariance:
+  results: results/zfree
+partition:
+  folds: ${zfree.folds}

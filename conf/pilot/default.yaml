@@ -1,0 +1,21 @@
+cache: data/cache/pilot
+train_per_genre: 256
+validation_per_genre: 64
+test_per_genre: 256
+positions_per_sentence: 2
+rules: [full, word, lin1, lin2, tree1, tree2, rand_tree1, full_prev, sel_suff, sel_inv_genre, sel_inv_free]
+regularizers: [none, cond]
+random_masks: 8
+validity_subsets: 20
+scorer_seed: 1729
+encoding_batch_sentences: 8
+encoding_chunk: 32
+alpha: 0.05
+calibration_draws: 100
+bootstrap: 200
+equivalence_margin: 0.005
+task: ud_upos
+rotation: answers
+seed: 0
+rule: all
+regularizer: all

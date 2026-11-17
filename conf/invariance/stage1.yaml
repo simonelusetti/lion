@@ -1,0 +1,12 @@
+defaults:
+  - default
+results: results/invariance_stage1
+datasets: [ud_upos, ud_deprel, gum_upos]
+random_draws: 0
+token_cap: 256
+kernel: rbf
+max_steps: 600
+validate_every: 50
+min_steps: 150
+patience: 3
+resume: true

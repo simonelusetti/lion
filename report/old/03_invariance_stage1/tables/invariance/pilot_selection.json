@@ -1,0 +1,68 @@
+{
+  "ud_upos": {
+    "rotation": "answers",
+    "validation_genre": "email",
+    "R1": {
+      "lambda": 0.1,
+      "neighbour": 0.3,
+      "run_lambdas": [
+        0.1,
+        0.3
+      ],
+      "validation_macro_f1": 0.7758280634880066
+    },
+    "R2": {
+      "lambda": 0.3,
+      "neighbour": 1.0,
+      "run_lambdas": [
+        0.3,
+        1.0
+      ],
+      "validation_macro_f1": 0.7760443687438965
+    }
+  },
+  "ud_deprel": {
+    "rotation": "answers",
+    "validation_genre": "email",
+    "R1": {
+      "lambda": 0.0,
+      "neighbour": 0.1,
+      "run_lambdas": [
+        0.0,
+        0.1
+      ],
+      "validation_macro_f1": 0.4886838495731354
+    },
+    "R2": {
+      "lambda": 0.0,
+      "neighbour": 0.1,
+      "run_lambdas": [
+        0.0,
+        0.1
+      ],
+      "validation_macro_f1": 0.4886838495731354
+    }
+  },
+  "gum_upos": {
+    "rotation": "academic",
+    "validation_genre": "bio",
+    "R1": {
+      "lambda": 0.0,
+      "neighbour": 0.1,
+      "run_lambdas": [
+        0.0,
+        0.1
+      ],
+      "validation_macro_f1": 0.785648763179779
+    },
+    "R2": {
+      "lambda": 0.0,
+      "neighbour": 0.1,
+      "run_lambdas": [
+        0.0,
+        0.1
+      ],
+      "validation_macro_f1": 0.785648763179779
+    }
+  }
+}

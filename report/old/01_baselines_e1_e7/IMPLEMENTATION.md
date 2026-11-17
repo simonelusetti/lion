@@ -1,6 +1,6 @@
 # What was implemented
 
-This describes the code that produced the recorded results, rather than a proposed protocol. The [original theory prompt](original_request.md) requested seven diagnostics of over-contextualization. The implementation is in [lion/diagnostics](../lion/diagnostics/); the numerical results and their interpretation are in [RESULTS.md](RESULTS.md).
+This describes the code that produced the recorded results, rather than a proposed protocol. The [original theory prompt](original_request.md) requested seven diagnostics of over-contextualization. The implementation is in [lion/diagnostics](../../../lion/diagnostics/); the numerical results and their interpretation are in [RESULTS.md](RESULTS.md).
 
 ## Scope and changes to the requested protocol
 
@@ -28,7 +28,7 @@ The diagnostic suite trained no selectors and updated no BERT weights. It reused
 
 DataLoaders batch sentences with explicit collate functions. The diagnostic classifier loader concatenates the selected word vectors from those sentences. Each view is initialized from the same training seed. The encoder forward is shared once per full sentence; masked focal forwards are expanded and processed in bounded chunks. Cached vectors are reused across classifier seeds.
 
-Relevant code: [encoder](../lion/encoder.py), [taggers](../tagger/model.py), [view extraction and sampling](../lion/diagnostics/data.py), [readout training](../lion/diagnostics/readouts.py), and [configuration](../conf/diagnostics/default.yaml).
+Relevant code: [encoder](../../../lion/encoder.py), [taggers](../../../tagger/model.py), [view extraction and sampling](../../../lion/diagnostics/data.py), [readout training](../../../lion/diagnostics/readouts.py), and [configuration](../../../conf/diagnostics/default.yaml).
 
 ## Sampling and datasets
 
@@ -65,13 +65,13 @@ Word-only inputs still expose sentence length, focal position and subword counts
 
 ## E1 — predictive value of the views
 
-[e1.py](../lion/diagnostics/e1.py) trains an independent MLP for each view, dataset and seed. It records token accuracy, macro F1, cross-entropy, and per-label precision/recall/F1. Disconnected focal samples do not receive span F1.
+[e1.py](../../../lion/diagnostics/e1.py) trains an independent MLP for each view, dataset and seed. It records token accuracy, macro F1, cross-entropy, and per-label precision/recall/F1. Disconnected focal samples do not receive span F1.
 
 For paired test positions it saves full-minus-word-only correctness and word-only-minus-full cross-entropy. Positive values favor full context. These gains are grouped by exact, case-sensitive word form using **all original training occurrences** to compute frequency and label entropy. Frequency bins are unseen, 1–5, 6–20 and 21+. Entropy bins are unseen, zero, `(0, ln 2]`, and `> ln 2`; entropy is undefined for unseen forms. Test labels do not determine these lexical statistics.
 
 ## E2 — masking and empirical lexical distributions
 
-[e2.py](../lion/diagnostics/e2.py) selects types occurring at least 20 times in the full training split with at least two observed labels and at least one occurrence in the held-out focal sample. It compares two predictors on word-only test vectors: the word-only-trained MLP and the full-trained MLP.
+[e2.py](../../../lion/diagnostics/e2.py) selects types occurring at least 20 times in the full training split with at least two observed labels and at least one occurrence in the held-out focal sample. It compares two predictors on word-only test vectors: the word-only-trained MLP and the full-trained MLP.
 
 For each type, the target distribution is its full-training empirical label distribution. Predictions are averaged across its held-out occurrences. The primary divergence is `KL(empirical training distribution || mean prediction)`, averaged equally across eligible types. Additional outputs include occurrence-level KL, token-weighted type KL, 10-bin confidence ECE, and multiclass Brier score. Natural logarithms are used.
 
@@ -79,13 +79,13 @@ This tests adaptation to masked inputs. It does not assume that the empirical di
 
 ## E3 — within-label linear readability of Z
 
-[e3.py](../lion/diagnostics/e3.py) fits linear softmax Z probes independently within each gold Y label and view. A domain is eligible for a label only with at least 32 training, 8 validation and 8 test focal examples; at least two eligible domains are required. Other domains are omitted for that label.
+[e3.py](../../../lion/diagnostics/e3.py) fits linear softmax Z probes independently within each gold Y label and view. A domain is eligible for a label only with at least 32 training, 8 validation and 8 test focal examples; at least two eligible domains are required. Other domains are omitted for that label.
 
 Training cross-entropy uses inverse-frequency domain weights. The test metric is balanced accuracy, with chance `1 / number of eligible domains`. The eligible domain set can differ across labels, so a dataset's average chance need not equal the reciprocal of its total genre count. Labels are used to define analysis subsets, not passed to the probe as features.
 
 ## E4 — conditional linear erasure
 
-[e4.py](../lion/diagnostics/e4.py) uses only training full-view vectors to fit one affine map. Let `r = one_hot(Z) − empirical P(Z | Y)` and define the concept vector as `one_hot(Y) ⊗ r`. The code estimates representation covariance and representation–concept cross-covariance, whitens the representation, and uses the cross-covariance's left singular vectors to identify a removable subspace. Eigenvalue and singular-value thresholds use relative tolerance `1e-6`.
+[e4.py](../../../lion/diagnostics/e4.py) uses only training full-view vectors to fit one affine map. Let `r = one_hot(Z) − empirical P(Z | Y)` and define the concept vector as `one_hot(Y) ⊗ r`. The code estimates representation covariance and representation–concept cross-covariance, whitens the representation, and uses the cross-covariance's left singular vectors to identify a removable subspace. Eigenvalue and singular-value thresholds use relative tolerance `1e-6`.
 
 Writing the whitener as W, its pseudoinverse as W⁺, the concept basis as U, and the training mean as μ, the map is:
 
@@ -100,7 +100,7 @@ This is a conditional-covariance erasure, not a guarantee that every form of lin
 
 ## E5 — within-label dependence on Z
 
-[e5.py](../lion/diagnostics/e5.py) compares predicted probability vectors within each gold label and domain pair. It analyzes all examples, lexical-entropy strata, and predictive-entropy strata separately. Predictive cutoffs are training-prediction tertiles for that fitted classifier.
+[e5.py](../../../lion/diagnostics/e5.py) compares predicted probability vectors within each gold label and domain pair. It analyzes all examples, lexical-entropy strata, and predictive-entropy strata separately. Predictive cutoffs are training-prediction tertiles for that fitted classifier.
 
 Each group contributes at most 128 focal tokens and must retain at least 20 tokens from at least 3 documents. The statistic is unbiased squared MMD with an RBF kernel. Its bandwidth squared is the median positive pooled squared distance within that cell, fixed during permutations. Negative unbiased estimates are allowed. Bandwidths are estimated separately across views/cells, so cross-view MMD comparisons are descriptive and depend on this normalization.
 
@@ -110,13 +110,13 @@ Empirical Jensen–Shannon divergence of word-type distributions is computed on 
 
 ## E6 — cross-domain shift
 
-[e6.py](../lion/diagnostics/e6.py) trains each view's MLP on a single source genre/dataset and selects its checkpoint using that source's native validation examples. Source eligibility requires at least 128 training, 16 validation and 32 test tokens. Targets require at least 32 test tokens.
+[e6.py](../../../lion/diagnostics/e6.py) trains each view's MLP on a single source genre/dataset and selects its checkpoint using that source's native validation examples. Source eligibility requires at least 128 training, 16 validation and 32 test tokens. Targets require at least 32 test tokens.
 
 It evaluates source and other-domain test samples, recording accuracy and macro F1, source-minus-target degradation, per-label recall changes, and test support for labels absent from source training. It also relates per-label recall degradation to E5's unstratified MMD for the corresponding domain pair, where at least three supported labels permit a correlation. These correlations compare source-trained classifiers with dependence measured for pooled-data classifiers and remain descriptive.
 
 ## E7 — controlled entity substitutions
 
-[e7.py](../lion/diagnostics/e7.py) uses available native NER datasets only. BIO tags define CoNLL mentions; contiguous same-type runs define Few-NERD coarse spans. Adjacent same-type Few-NERD entities therefore cannot always be distinguished as separate mentions.
+[e7.py](../../../lion/diagnostics/e7.py) uses available native NER datasets only. BIO tags define CoNLL mentions; contiguous same-type runs define Few-NERD coarse spans. Adjacent same-type Few-NERD entities therefore cannot always be distinguished as separate mentions.
 
 The training split supplies a reservoir of up to 64 distinct replacements per entity-type/per-word-WordPiece-length signature. For up to 128 accepted test focal entities per dataset, the code independently attempts to replace the nearest other entity within eight words and to replace the focal mention itself. The original surface is excluded. Retokenization must preserve packed word alignment exactly.
 
@@ -135,4 +135,4 @@ PYTHONDONTWRITEBYTECODE=1 HF_HUB_OFFLINE=1 \
   .venv/bin/python -u -m lion.diagnostics.run runtime.workers=0 runtime.batch_size=32
 ```
 
-Each experiment can also be invoked as `python -m lion.diagnostics.e1` through `e7` after its prerequisites exist. Baseline grids are [tagger_baselines.yaml](../grids/tagger_baselines.yaml) and the two-dataset [retry grid](../grids/missing_baselines.yaml). Configurations, source paths and checksums are recorded in [provenance.json](provenance.json). Because the inventory has since changed, reproducing the original six-dataset cohort in a fresh location requires explicitly selecting those six datasets rather than silently including the repaired WikiANN/WNUT loaders.
+Each experiment can also be invoked as `python -m lion.diagnostics.e1` through `e7` after its prerequisites exist. Baseline grids are [tagger_baselines.yaml](../../../grids/tagger_baselines.yaml) and the two-dataset [retry grid](../../../grids/missing_baselines.yaml). Configurations, source paths and checksums are recorded in [provenance.json](provenance.json). Because the inventory has since changed, reproducing the original six-dataset cohort in a fresh location requires explicitly selecting those six datasets rather than silently including the repaired WikiANN/WNUT loaders.

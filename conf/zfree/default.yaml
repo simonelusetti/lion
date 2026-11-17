@@ -1,0 +1,7 @@
+pca_dimensions: 64
+ridge: 0.001
+calibration_steps: 100
+calibration_batches: 12
+folds: 5
+probe_epochs: 10
+permutation_seed: 8675309

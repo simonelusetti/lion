@@ -1,0 +1,4 @@
+defaults:
+  - invariance
+  - override invariance: stage1
+  - _self_

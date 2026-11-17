@@ -1,0 +1,10 @@
+defaults:
+  - diagnostics
+  - crt: default
+  - override stage: crt
+  - _self_
+runtime:
+  amp: fp16
+  tf32: false
+  batch_size: 512
+  workers: 0

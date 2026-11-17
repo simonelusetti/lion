@@ -1,0 +1,5 @@
+defaults:
+  - diagnostics
+  - invariance: default
+  - override stage: invariance
+  - _self_

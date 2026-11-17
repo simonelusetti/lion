@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
-from transformers import BertModel
+from transformers import BertModel, BertForMaskedLM
 
 
 class FrozenBERT(nn.Module):
@@ -51,6 +51,26 @@ class FrozenBERT(nn.Module):
 
 def build_encoder(cfg):
     return {"bert": FrozenBERT}[cfg.family](cfg.name)
+
+
+class FrozenMaskedBERT(nn.Module):
+    """The same pretrained BERT backbone and its own MLM head, at requested positions."""
+    def __init__(self,name):
+        super().__init__()
+        self.model=BertForMaskedLM.from_pretrained(name).eval().requires_grad_(False)
+
+    def train(self,mode=True):
+        super().train(False)
+        return self
+
+    def forward(self,ids,attention_mask,positions,mlm=False):
+        h=self.model.bert(input_ids=ids,attention_mask=attention_mask,return_dict=False)[0]
+        selected=h[torch.arange(len(h),device=h.device),positions]
+        return {'logits':self.model.cls(selected)} if mlm else {'features':selected}
+
+
+def build_masked_encoder(cfg):
+    return {"bert":FrozenMaskedBERT}[cfg.family](cfg.name)
 
 
 def word_features(encoded, positions):

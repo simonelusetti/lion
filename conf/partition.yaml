@@ -1,0 +1,5 @@
+defaults:
+  - diagnostics
+  - partition: default
+  - override stage: partition
+  - _self_

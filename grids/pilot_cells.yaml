@@ -1,0 +1,12 @@
+# After the prepare/base/scorer/select/selected/pilot stages:
+# .venv/bin/python -B -m forge.cli -P lion.pilot -M run --config-dir /home/simonelusetti/lion/conf --config-name pilot grid grids/pilot_cells.yaml
+# The normal pipeline batches these independent cells into 60 vectorized fits.
+globals:
+  - stage.experiment=cell
+  - runtime.workers=0
+product:
+  pilot.task: [ud_upos, ud_deprel, gum_upos, ud_discourse]
+  pilot.rotation: [0, 1, 2, 3, 4]
+  pilot.seed: [0, 1, 2]
+  pilot.rule: [full, word, lin1, lin2, tree1, tree2, rand_tree1, full_prev, sel_suff, sel_inv_genre, sel_inv_free]
+  pilot.regularizer: [none, cond]
