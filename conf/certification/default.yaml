@@ -29,4 +29,4 @@ test_batch_size: 8
 test_documents: 256
 test_budget_seconds: 10800
 gamma: 0.01
-alpha: 0.05
+gate_z: 1.645

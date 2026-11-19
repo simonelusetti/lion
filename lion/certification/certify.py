@@ -9,8 +9,8 @@ from ..diagnostics.common import read_csv, save_json, write_csv
 from ..encoder import load_masked_encoder as masked_encoder
 from ..partition.train import load_model
 from ..runtime import autocast
-from .calibrate import sample_group_rows
-from .data import collate, context, focal_vectors, load, paths, pool_words, task_names, unique_queries, word_to_pieces
+from .calibrate import calibration_losses, sample_group_rows
+from .data import collate, context, focal_vectors, load, loader, paths, pool_words, task_names, unique_queries, word_to_pieces
 from .selector import (batch_scores, chunk_size, focal_batches, kept_words, label_groups, load_selector,
                        mlm_probabilities, predicted_group, ranks, raw_rows, replacement_positions,
                        scorer_log_probs, word_budget)
@@ -207,25 +207,29 @@ def summarize(values, cfg, sufficiency):
     return result
 
 
-def certificate(values, classes, cfg):
-    no_drop = values["mlm_tokens"] == 0
-    complete = (values["found"] == cfg.certification.draws) | no_drop
-    n = int(complete.sum())
-    result = {"rows": n, "no_drop_rows": int(no_drop.sum()), "incomplete_rows": len(complete) - n,
-              "cross_entropy": None, "full_cross_entropy": None, "cross_entropy_gap": None,
-              "ucb_clt_nats": None, "ucb_hoeffding_nats": None}
-    if n:
-        original = values["original"][complete].double()
-        probabilities = values["resampled"][complete].double().exp().mean(-1)
-        gamma = cfg.certification.gamma
-        loss = -((1 - gamma) * probabilities + gamma / classes).log()
-        mean = float(loss.mean())
-        margin = math.log(classes / gamma) * math.sqrt(math.log(1 / cfg.certification.alpha) / (2 * n))
-        result.update(cross_entropy=mean, full_cross_entropy=float(-original.mean()),
-                      cross_entropy_gap=float((loss + original).mean()),
-                      ucb_clt_nats=mean + 1.645 * float(loss.std()) / math.sqrt(n) if n > 1 else None,
-                      ucb_hoeffding_nats=mean + margin)
-    return result
+@torch.no_grad()
+def held_out_losses(encoder, selector, scorer, rows, task, rho, special, cfg):
+    if rho == 1.0 or not rows:
+        return torch.zeros(len(rows), dtype=torch.float64)
+    device = cfg.runtime.device
+    fraction = torch.tensor([rho], device=device, dtype=torch.float64)
+    rng = torch.Generator(device=device).manual_seed(cfg.seed + 2)
+    return torch.cat([
+        calibration_losses(encoder, selector, scorer, batch, fraction, special, cfg, rng)[:, 0].cpu()
+        for batch in focal_batches(loader(rows, cfg), task, cfg)
+    ])
+
+
+def certificate(losses, rho, cfg):
+    n = len(losses)
+    z = cfg.certification.gate_z
+    mean = float(losses.mean()) if n else None
+    sd = float(losses.std()) if n > 1 else None
+    margin = z * sd / math.sqrt(n) if sd is not None else None
+    lower, upper = (mean - margin, mean + margin) if margin is not None else (None, None)
+    if rho == 1.0:
+        mean = sd = lower = upper = 0.0
+    return {"rows": n, "mean_loss": mean, "sd": sd, "lower_bound": lower, "upper_bound": upper, "z": z}
 
 
 @torch.no_grad()
@@ -292,11 +296,12 @@ def subgroup(rows, index):
 
 
 def group_test(encoder, selector, scorer, rows, fractions, outside, bank, cfg, meta, folder, budget):
+    task = meta["task"]
     rng = torch.Generator(device=cfg.runtime.device).manual_seed(cfg.seed)
     pilot = max(1, math.ceil(0.01 * len(rows))) if rows else 0
     start = time.monotonic()
     def test(part):
-        return evaluate_rows(encoder, selector, scorer, part, fractions, outside, bank["special"], meta["task"], cfg, rng)
+        return evaluate_rows(encoder, selector, scorer, part, fractions, outside, bank["special"], task, cfg, rng)
 
     selected, records, masks = test(rows[:pilot]) if pilot else ([], ([], []), [])
     elapsed = time.monotonic() - start
@@ -318,14 +323,11 @@ def group_test(encoder, selector, scorer, rows, fractions, outside, bank, cfg, m
     })
     totals = []
     artifacts = {"rows": selected, "masks": masks}
-    bound = {"rows": 0}
     for kind, batches in zip(("sufficiency", "minimality"), records):
         if batches:
             values = {key: torch.cat([batch[key] for batch in batches]) for key in batches[0]}
             summary = summarize(values, cfg, sufficiency=kind == "sufficiency")
             artifacts[kind] = values
-            if kind == "sufficiency":
-                bound = certificate(values, len(bank["labels"][meta["task"]]), cfg)
         else:
             summary = {"eligible_rows": 0, "complete_rows": 0, "pooled_rows": 0, "p": None, "effect": None}
         totals.append({**meta, "test": kind, **summary})
@@ -335,12 +337,19 @@ def group_test(encoder, selector, scorer, rows, fractions, outside, bank, cfg, m
     kept_fractions = [k / (k + d) for k, d in counts if k + d]
     size = {"rows": len(counts), "mean_kept_context": mean_kept, "mean_dropped_context": mean_dropped,
             "kept_fraction": sum(kept_fractions) / len(kept_fractions) if kept_fractions else None}
-    p = totals[0]["p"]
-    gap = bound.get("cross_entropy_gap")
-    passed = p is not None and gap is not None and p > cfg.certification.alpha and gap <= cfg.certification.epsilon
-    gate = {**meta, "p": p, "alpha": cfg.certification.alpha, "cross_entropy_gap": gap,
-            "epsilon": cfg.certification.epsilon, "passed": passed}
-    print(f"CRT {label}: sufficiency p={p}, certificate gap={gap}, gate {'passed' if passed else 'failed'}", flush=True)
+    # The diagnostic timing cap applies only to the CRT. The gate uses the full test sample.
+    rho = meta["rho"]
+    losses = held_out_losses(encoder, selector, scorer, rows, task, rho, bank["special"], cfg)
+    bound = certificate(losses, rho, cfg)
+    artifacts["certificate"] = {"sentence": [row["sentence"] for row in rows],
+                                "focal": [row["focals"].item() for row in rows], "losses": losses}
+    lower = bound["lower_bound"]
+    epsilon = cfg.certification.epsilon
+    passed = rho == 1.0 or (lower is not None and lower <= epsilon)
+    gate = {**meta, **bound, "epsilon": epsilon, "passed": passed}
+    print(f"CRT {label}: diagnostic sufficiency p={totals[0]['p']}, minimality p={totals[1]['p']}", flush=True)
+    print(f"Gate {label}: n={bound['rows']}, mean loss={bound['mean_loss']}, lower bound={lower}, "
+          f"epsilon={epsilon}, {'passed' if passed else 'failed'}", flush=True)
     return totals, {**meta, **bound}, {**meta, **size}, gate, artifacts
 
 

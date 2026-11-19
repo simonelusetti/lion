@@ -35,7 +35,7 @@ def paths(cfg):
     if runtime["device"].startswith("cuda") and runtime["devices"] is not None:
         runtime["device"] = f"cuda:{runtime['devices'][0]}"
     key = signature(OmegaConf.create({
-        "protocol": "word-ranked-ltt-v1",
+        "protocol": "word-ranked-ltt-v2",
         "encoder": cfg.encoder, "tagger": cfg.tagger, "train": cfg.train,
         "seed": cfg.seed, "runtime": runtime, "certification": certification,
     }))

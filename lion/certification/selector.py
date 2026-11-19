@@ -130,6 +130,7 @@ def mlm_probabilities(encoder, ids, attention, positions, special, cfg):
 
 @torch.no_grad()
 def independent_fills(encoder, ids, attention, drop, draws, special, cfg, rng):
+    """Sample from the kept pieces and same-length mask slots in one MLM pass."""
     fill = ids[:, None].expand(-1, draws, -1).transpose(1, 2).clone()
     active = drop.any(-1).nonzero().flatten()
     # Bound the number of vocabulary distributions kept in memory at once.
@@ -138,6 +139,7 @@ def independent_fills(encoder, ids, attention, drop, draws, special, cfg, rng):
         if not len(rows):
             continue
         masked = ids[rows].masked_fill(drop[rows], special["mask"])
+        # Positions select the returned logits. BERT receives the masked IDs and attention mask.
         positions = drop[rows]
         probabilities = mlm_probabilities(encoder, masked, attention[rows], positions, special, cfg)
         owner, column = positions.nonzero(as_tuple=True)
@@ -177,6 +179,7 @@ def draw_features(encoder, ids, attention, word_ids, focal, fills, cfg, gates=No
             return focal_vectors(encoder, ids, attention, word_ids, focal, replacements, gates)
 
     if raw is not None:
+        # Identical fills reuse the raw vector. Other fills are encoded as ordinary token IDs.
         features = raw[:, None].expand(-1, draws, -1).clone()
         owner, draw = (fills != ids[:, None]).any(-1).nonzero(as_tuple=True)
         if len(owner):

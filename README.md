@@ -313,7 +313,7 @@ The full product is in `grids/pilot_cells.yaml`; the default runner batches its 
 ```
 
 The default experiment trains word-ranking selectors on EWT UPOS and dependency
-labels and calibrates how many words to keep. Passing the held-out CRT and
+labels and calibrates how many words to keep. Passing the held-out
 cross-entropy gate triggers opposite-fold cleaning and a comparison with a
 matched raw-text baseline. Both classifiers evaluate raw EWT and GUM sentences.
 The [protocol](lion/certification/IMPLEMENTATION.md) describes the sampling,

@@ -72,14 +72,61 @@ selector's word mask and the row's scorer-predicted group. The test reuses
 the scorer output from this replay. The pooled CRT compares sums of gold
 log probabilities, with ties counted against rejection. The effect is the
 mean original log probability minus the log of the mean resampled
-probability. The certificate averages the accepted probabilities, adds
-uniform smoothing, and reports CE against the unsmoothed full-context
-scorer on the same rows, the gap, and both normal and Hoeffding bounds.
+probability. The resulting p-values are diagnostics. The first 1% of test
+rows times the chained draws and contributes to their results. The CRT row
+budget can reduce the remaining diagnostic rows while preserving draw counts.
 
-The first 1% of selected test rows times the chained tests and contributes
-to their results. The row budget can reduce remaining rows while preserving
-the configured draw count. The held-out gate requires sufficiency p above
-`alpha` and certificate gap at most `epsilon` in every fold and group.
+The held-out certificate uses the full configured test sample for each fold
+and group. It uses the same independent fills, `calibration_draws`, and
+uniform smoothing on the raw and filled gold-label probabilities as
+calibration. It reports the mean increase in cross-entropy, its sample
+standard deviation, row count, and one-sided lower and upper bounds. Each
+bound uses `gate_z` standard errors, with a default of 1.645. A group passes
+when the lower bound is at most `epsilon`. An all-kept group has exactly
+zero loss and passes by construction. All fold and group gates must pass
+for downstream training.
+
+### What the certificate measures
+
+The fill-in input audit covers calibration, the held-out certificate, and
+cleaning. The MLM receives the kept WordPiece IDs in their original
+positions, one mask token per dropped piece, and the ordinary attention
+mask. The scorer reads the pooled focal vector from the filled token
+sequence. Both forwards have the same input format for every group.
+Group, score, rank, kept fraction, and fill provenance are used outside
+these forwards. Drop positions select which MLM logits to read. The
+placement and count of mask tokens expose the selected slots and the
+original piece lengths. A downstream head can still respond to the
+effects of filling on the focal vector.
+
+In the ideal EVAL-X comparison, the full predictor is the true full-text
+label posterior. The retained predictor uses the true label posterior
+given the values at a fixed kept set and the visible layout, without
+conditioning on the event that the selector chose that set. The oracle
+loss gap decomposes into two nonnegative terms:
+
+- Label information in the dropped words given retained values, layout,
+  and the selection event.
+- The KL change in the label posterior attributable to the selection
+  event, comparing the selected population with the fixed-set conditional.
+
+With the true full-text posterior as reference, the first term is bounded
+by excess cross-entropy for any predictor restricted to the retained
+values, layout, and selection. This part needs no fill-model assumption.
+Interpreting the second term as information in the selection requires
+the fill-averaged predictor to approximate the fixed-set conditional.
+This is the oracle identity behind the EVAL-X gap discussed by Jethani
+et al. and Puli, Nguyen, and Ranganath. [EVAL-X](https://proceedings.mlr.press/v130/jethani21a.html) · [Lemma 4 and Theorem 1](https://pmc.ncbi.nlm.nih.gov/articles/PMC13693995/)
+
+The pilot measures excess cross-entropy relative to a fitted, smoothed
+scorer with a finite number of MLM fills. Subtracting the fitted raw
+scorer's loss introduces its approximation error into the gap. The
+confidence bounds therefore apply to that measured risk. A bound on
+label information requires a sufficiently accurate full-text reference,
+and a bound on encoding through selection also requires a sufficiently
+accurate fixed-set predictor. The chained CRTs hold the selected mask
+and scorer group fixed when accepting draws. Their diagnostic p-values
+probe evidence in word values with that selection fixed.
 
 ## Classifiers and artifacts
 

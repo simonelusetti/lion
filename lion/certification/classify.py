@@ -83,7 +83,7 @@ def concatenate(parts):
     return {key: torch.cat([part[key] for part in parts]) for key in parts[0]}
 
 
-def span_scores(predictions, gold, sentence, source_labels, target_labels, shared=False):
+def span_counts(predictions, gold, sentence, source_labels, target_labels, shared=False):
     def types(labels):
         if shared:
             return [shared_label(label) for label in labels]
@@ -109,7 +109,12 @@ def span_scores(predictions, gold, sentence, source_labels, target_labels, share
     start = torch.where(begins, token, -1).cummax(dim=0).values
     matches = ends[:, :-1] & ends[:, -1:] & (ids[:, :-1] == ids[:, -1:]) & (start[:, :-1] == start[:, -1:])
     counts = ends.sum(0)
-    return 2 * matches.sum(0).double() / (counts[:-1] + counts[-1]).clamp_min(1)
+    return matches.sum(0), counts[:-1], counts[-1]
+
+
+def span_scores(predictions, gold, sentence, source_labels, target_labels, shared=False):
+    correct, predicted, expected = span_counts(predictions, gold, sentence, source_labels, target_labels, shared=shared)
+    return 2 * correct.double() / (predicted + expected).clamp_min(1)
 
 
 def evaluate(logits, data, source, target, source_labels, space):
