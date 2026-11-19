@@ -1,0 +1,3 @@
+dataset,task,selector,held_out,group_unit,rows,no_drop_rows,incomplete_rows,cross_entropy,full_cross_entropy,cross_entropy_gap,ucb_clt_nats,ucb_hoeffding_nats
+conll2003,ner,g1,g2,sentence,256,1,0,0.7324727518457802,0.17739477677857016,0.5550779750672101,0.8735887305134813,1.2528021338134947
+conll2003,ner,g2,g1,sentence,256,0,0,0.6612721131697676,0.16665319742687768,0.49461891574288996,0.7894367001397676,1.1816014951374822

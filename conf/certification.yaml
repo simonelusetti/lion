@@ -10,4 +10,5 @@ train:
 runtime:
   selector_cpu_groups: null
   selector_score_batch_size: null
+  mlm_position_budget: 512
   crt_prefetch_max_positions: 2

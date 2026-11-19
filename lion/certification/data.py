@@ -28,12 +28,16 @@ def task_names(cfg):
 
 def paths(cfg):
     certification = OmegaConf.to_container(cfg.certification, resolve=True)
-    if certification.get("selector_train_focals_per_fold") is None:
-        certification.pop("selector_train_focals_per_fold", None)
+    for key in ("train_sentence_cap", "selector_train_focals_per_fold"):
+        if certification.get(key) is None:
+            certification.pop(key, None)
+    runtime = OmegaConf.to_container(cfg.runtime, resolve=True)
+    if runtime["device"].startswith("cuda") and runtime["devices"] is not None:
+        runtime["device"] = f"cuda:{runtime['devices'][0]}"
     key = signature(OmegaConf.create({
-        "protocol": "accepted-fill-v2",
+        "protocol": "word-ranked-ltt-v1",
         "encoder": cfg.encoder, "tagger": cfg.tagger, "train": cfg.train,
-        "seed": cfg.seed, "runtime": cfg.runtime, "certification": certification,
+        "seed": cfg.seed, "runtime": runtime, "certification": certification,
     }))
     return absolute(cfg.certification.results) / key
 
@@ -67,15 +71,16 @@ def ud_rows(cfg, tokenizer, labels):
                 row["discourse"] = _gum_discourse_labels(row)
             ids = tokenized["input_ids"][index]
             words = tokenized.word_ids(index)
-            focals = [i for i, word in enumerate(words)
-                      if word is not None and (subset == "train" or i == 0 or word != words[i - 1])]
+            retained = list(dict.fromkeys(word for word in words if word is not None))
+            slots = {word: slot for slot, word in enumerate(retained)}
+            word_ids = [slots.get(word, -1) for word in words]
             gold = {}
             for task, mapping in lookup.items():
-                names = [row[task][words[i]] for i in focals]
+                names = [row[task][word] for word in retained]
                 if task == "deprel":
                     names = [label.split(":")[0] if label else label for label in names]
                 gold[task] = [mapping.get(label, -100) for label in names]
-            yield subset, domain, row["sent_id"], row["sent_id"].rsplit("-", 1)[0], ids, focals, gold
+            yield subset, domain, row["sent_id"], row["sent_id"].rsplit("-", 1)[0], ids, word_ids, gold
 
 
 def native_rows(cfg, task, domain):
@@ -89,12 +94,7 @@ def native_rows(cfg, task, domain):
     for subset, split in splits.items():
         for index, row in enumerate(data[split]):
             key = f"{domain}/{split}/{index}"
-            if subset == "train":
-                focals = [i for i, word in enumerate(row["word_ids"]) if word >= 0]
-                labels = [row["labels"][row["word_ids"][i]] for i in focals]
-            else:
-                focals, labels = row["positions"], row["labels"]
-            yield subset, domain, key, key, row["ids"], focals, {task: labels}
+            yield subset, domain, key, key, row["ids"], row["word_ids"], {task: row["labels"]}
 
 
 def ner_transfer_sets(cfg, task, start):
@@ -105,10 +105,11 @@ def ner_transfer_sets(cfg, task, start):
         split = f"ood_{target}"
         rows = []
         try:
-            for _, _, source_id, document, ids, focals, gold in native_rows(cfg, task, target):
-                if not focals:
+            for _, _, source_id, document, ids, word_ids, gold in native_rows(cfg, task, target):
+                if not gold[task]:
                     continue
-                rows.append({"ids": torch.tensor(ids), "focals": torch.tensor(focals),
+                rows.append({"ids": torch.tensor(ids), "word_ids": torch.tensor(word_ids),
+                             "focals": torch.arange(len(gold[task])),
                              "gold": {task: torch.tensor(gold[task])}, "sentence": start,
                              "source_id": source_id, "document": document})
                 start += 1
@@ -135,14 +136,25 @@ def prepare(cfg, output):
         labels = {tasks[0]: LABELS[source]}
         examples = native_rows(cfg, tasks[0], source)
     sets, domains = {}, {}
-    for sentence, (subset, domain, source_id, document, ids, focals, gold) in enumerate(examples):
-        if not focals:
+    for sentence, (subset, domain, source_id, document, ids, word_ids, gold) in enumerate(examples):
+        count = len(gold[tasks[0]])
+        if not count:
             continue
         targets = {task: torch.tensor(values) for task, values in gold.items()}
-        sets.setdefault(subset, []).append({"ids": torch.tensor(ids), "focals": torch.tensor(focals),
+        sets.setdefault(subset, []).append({"ids": torch.tensor(ids), "word_ids": torch.tensor(word_ids),
+                                            "focals": torch.arange(count),
                                             "gold": targets, "sentence": sentence, "source_id": source_id,
                                             "document": document})
         domains[subset] = domain
+
+    train = sets["train"]
+    cap = cfg.certification.train_sentence_cap
+    if cap is not None and cap <= 0:
+        raise ValueError("certification.train_sentence_cap must be positive.")
+    if cap is not None and cap < len(train):
+        indices = torch.randperm(len(train), generator=torch.Generator().manual_seed(cfg.seed))[:cap]
+        sets["train"] = [train[i] for i in indices.sort().values.tolist()]
+
     counts = [{"split": name, "dataset": domains[name], "sentences": len(rows),
                        "documents": len({row["document"] for row in rows}),
                        "words": sum(len(row["focals"]) for row in rows),
@@ -184,12 +196,16 @@ def collate(rows):
     ids = pad_sequence([row["ids"] for row in rows], batch_first=True, padding_value=0)
     counts = torch.tensor([len(row["focals"]) for row in rows])
     batch = {"ids": ids, "lengths": lengths, "attention": torch.arange(ids.shape[1])[None] < lengths[:, None],
+             "word_ids": pad_sequence([row["word_ids"] for row in rows], batch_first=True, padding_value=-1),
              "owner": torch.arange(len(rows)).repeat_interleave(counts),
              "focal": torch.cat([row["focals"] for row in rows]),
              "sentence": torch.tensor([row["sentence"] for row in rows]).repeat_interleave(counts),
              "gold": {task: torch.cat([row["gold"][task] for row in rows]) for task in rows[0]["gold"]}}
-    if "fill" in rows[0]:
-        batch["fill"] = pad_sequence([row["fill"] for row in rows], batch_first=True)
+    if "hidden" in rows[0]:
+        batch["hidden"] = pad_sequence([row["hidden"] for row in rows], batch_first=True)
+        batch["word_counts"] = torch.tensor([len(row["hidden"]) for row in rows])
+    if "group" in rows[0]:
+        batch["group"] = torch.cat([row["group"] for row in rows])
     return batch
 
 
@@ -205,9 +221,36 @@ def loader(rows, cfg, train=False):
                       shuffle=train and cfg.train.shuffle, **options)
 
 
-def context(attention, focal):
-    position = torch.arange(attention.shape[1], device=attention.device)[None]
-    return attention & (position > 0) & (position < attention.sum(-1, keepdim=True) - 1) & (position != focal[:, None])
+def context(counts, focal, width):
+    positions = torch.arange(width, device=focal.device)[None]
+    return (positions < counts[:, None]) & (positions != focal[:, None])
+
+
+def word_to_pieces(values, word_ids, special):
+    return torch.where(word_ids >= 0, values.gather(1, word_ids.clamp_min(0)), special)
+
+
+def pool_words(hidden, word_ids, width):
+    index = word_ids.clamp_min(0)
+    valid = word_ids >= 0
+    values = hidden.float() * valid[..., None]
+    sums = values.new_zeros(len(values), width, values.shape[-1])
+    sums.scatter_add_(1, index[..., None].expand_as(values), values)
+    count = values.new_zeros(len(values), width).scatter_add_(1, index, valid.float())
+    return sums / count.clamp_min(1)[..., None]
+
+
+def focal_vectors(encoder, ids, attention, word_ids, focal, replacements=None, gates=None):
+    positions = word_ids == focal[:, None]
+    values = encoder(ids, attention, positions, replacement_ids=replacements, gates=gates)["features"].float()
+    owners = positions.nonzero(as_tuple=True)[0]
+    summed = values.new_zeros(len(ids), values.shape[-1]).index_add_(0, owners, values)
+    return summed / positions.sum(-1, keepdim=True)
+
+
+def attach_features(rows, features):
+    lengths = [len(row["focals"]) for row in rows]
+    return [{**row, "hidden": vectors} for row, vectors in zip(rows, features.split(lengths))]
 
 
 def unique_queries(ids, attention, positions):
@@ -220,7 +263,7 @@ def unique_queries(ids, attention, positions):
 
 
 @torch.no_grad()
-def full_features(encoder, sets, cfg):
+def full_features(encoder, sets, cfg, dtype=torch.float16):
     result = {}
     device = cfg.runtime.device
     for name, rows in sets.items():
@@ -229,8 +272,10 @@ def full_features(encoder, sets, cfg):
             with autocast(cfg):
                 hidden = encoder(batch["ids"].to(device, non_blocking=True),
                                  batch["attention"].to(device, non_blocking=True))["features"]
-            parts.append(hidden[batch["owner"].to(device, non_blocking=True),
-                                batch["focal"].to(device, non_blocking=True)].cpu().half())
+            words = batch["word_ids"].to(device, non_blocking=True)
+            pooled = pool_words(hidden, words, int(batch["focal"].max()) + 1)
+            parts.append(pooled[batch["owner"].to(device, non_blocking=True),
+                                batch["focal"].to(device, non_blocking=True)].to(device="cpu", dtype=dtype))
         result[name] = torch.cat(parts)
     return result
 

@@ -1,0 +1,3 @@
+dataset,task,selector,held_out,group_unit,rows,mean_kept_context,mean_dropped_context,kept_fraction
+conll2003,ner,g1,g2,sentence,256,0.0,16.3359375,0.0
+conll2003,ner,g2,g1,sentence,256,0.0,18.1953125,0.0

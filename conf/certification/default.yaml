@@ -10,10 +10,18 @@ scorer_fraction: 0.25
 scorer_validation_fraction: 0.20
 hidden: [128, 64]
 selector_epochs: 5
+train_sentence_cap: null
 selector_train_focals_per_fold: null
 selector_lr: 0.001
-size_penalty: 0.05
+rank_temperature: 0.1
+gate_temperature: 0.5
 training_draws: 4
+calibration_draws: 10
+cleaning_draws: 3
+epsilon: 0.05
+delta: 0.1
+grid_step: 0.05
+calibration_share: 0.7
 draws: 50
 max_proposals: 1024
 proposal_batch_size: 64

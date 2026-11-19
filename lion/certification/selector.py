@@ -1,4 +1,4 @@
-"""HardKuma context gates trained through the frozen scorer."""
+"""Rank context words through the frozen scorer and masked language model."""
 import math
 import time
 from itertools import islice
@@ -12,13 +12,14 @@ from ..diagnostics.common import save_json, write_csv
 from ..encoder import load_masked_encoder as masked_encoder
 from ..partition.train import fit, load_model
 from ..runtime import autocast
-from .data import context, full_features, load, loader, paths, readout_data, task_names
+from .data import (attach_features, context, focal_vectors, full_features, load, loader,
+                   paths, readout_data, task_names, word_to_pieces)
 
 
 class Selector(nn.Module):
     def __init__(self, dimension, widths):
         super().__init__()
-        sizes = [2 * dimension, *widths, 2]
+        sizes = [2 * dimension, *widths, 1]
         layers = []
         for i, (source, target) in enumerate(zip(sizes, sizes[1:])):
             layers.append(nn.Linear(source, target))
@@ -27,36 +28,41 @@ class Selector(nn.Module):
         self.norm = nn.LayerNorm(dimension)
         self.scorer = nn.Sequential(*layers)
 
-    def concentrations(self, hidden, focal, owner=None):
+    def forward(self, hidden, focal, owner=None):
         hidden = self.norm(hidden.float())
-        rows = torch.arange(len(hidden), device=hidden.device) if owner is None else owner
+        owners = torch.arange(len(hidden), device=hidden.device) if owner is None else owner
         first = self.scorer[0]
-        focal_weight, candidate_weight = first.weight.chunk(2, dim=1)
-        candidate = F.linear(hidden, candidate_weight, first.bias)
+        focal_weight, context_weight = first.weight.chunk(2, dim=1)
+        candidate = F.linear(hidden, context_weight, first.bias)
         if owner is not None:
             candidate = candidate[owner]
-        projection = candidate + F.linear(hidden[rows, focal], focal_weight)[:, None]
+        projection = candidate + F.linear(hidden[owners, focal], focal_weight)[:, None]
         for layer in islice(self.scorer, 1, None):
             projection = layer(projection)
-        return (F.softplus(projection) + 0.2).unbind(-1)
+        return projection.squeeze(-1)
 
-    @staticmethod
-    def hard_gate(a, b, u):
-        kuma = (-torch.expm1(torch.log1p(-u) / b)).pow(a.reciprocal())
-        return (1.2 * kuma - 0.1).clamp(0, 1)
 
-    def forward(self, hidden, focal, draw=False, owner=None):
-        a, b = self.concentrations(hidden, focal, owner)
-        u = torch.rand_like(a).clamp(1e-6, 1 - 1e-6) if draw else torch.full_like(a, 0.5)
-        nonzero = (-torch.expm1(a * math.log(0.1 / 1.2))).pow(b)
-        return self.hard_gate(a, b, u), nonzero
+def ranks(scores, eligible):
+    order = scores.masked_fill(~eligible, -torch.inf).argsort(dim=-1, descending=True, stable=True)
+    return order.argsort(dim=-1)
 
-    def mask(self, hidden, focal, eligible, owner=None):
-        a, b = self.concentrations(hidden, focal, owner)
-        log_survival_at_zero = b * torch.log(-torch.expm1(a * math.log(0.1 / 1.2)))
-        p_zero = -torch.expm1(log_survival_at_zero)
-        p_one = (-torch.expm1(a * math.log(1.1 / 1.2))).pow(b)
-        return ~eligible | (p_one >= p_zero)
+
+def word_budget(fraction, available):
+    return (fraction * available).round().long()
+
+
+def kept_words(rank, eligible, budgets):
+    return ~eligible | (rank < budgets[:, None])
+
+
+def soft_keep(scores, eligible, budgets, cfg):
+    strength = scores.sigmoid()
+    differences = strength[:, :, None] - strength[:, None, :]
+    wins = (differences / cfg.certification.rank_temperature).sigmoid()
+    soft_rank = 0.5 + (wins * eligible[:, :, None]).sum(dim=1)
+    soft = ((budgets[:, None] + 0.5 - soft_rank) / cfg.certification.gate_temperature).sigmoid()
+    # The half added to soft_rank removes the included 0.5 self comparison.
+    return torch.where(eligible, soft, 1.0)
 
 
 def load_selector(cfg, task, fold):
@@ -67,35 +73,45 @@ def load_selector(cfg, task, fold):
     return model.to(cfg.runtime.device).eval()
 
 
+def raw_rows(cfg, bank):
+    full = torch.load(paths(cfg) / "scorer" / "full_features.pt", weights_only=False, mmap=True)
+    return attach_features(bank["sets"]["train"], full["train"])
+
+
 def chunk_size(ids, cfg, max_rows=None):
     limit = cfg.runtime.focal_chunk if max_rows is None else max_rows
     return max(1, min(limit, cfg.runtime.attention_budget // ids.shape[1] ** 2))
 
 
-def focal_batches(encoder, batches, cfg):
+def focal_batches(batches, task, cfg):
     device = cfg.runtime.device
     for batch in batches:
-        ids, attention, focal, owners = (batch[key].to(device, non_blocking=True)
-                                        for key in ("ids", "attention", "focal", "owner"))
-        gold = {task: value.to(device, non_blocking=True) for task, value in batch["gold"].items()}
-        fill = batch.get("fill")
-        if fill is not None:
-            fill = fill.to(device, non_blocking=True)
-        with torch.no_grad(), autocast(cfg):
-            hidden = encoder(ids, attention)["features"]
-        lengths = batch["lengths"][batch["owner"]]
-        sentence_owners = batch["owner"].tolist()
+        labeled = batch["gold"][task] >= 0
+        focals = batch["focal"][labeled].to(device, non_blocking=True)
+        owners = batch["owner"][labeled]
+        lengths = batch["lengths"][owners]
+        word_lengths = batch["word_counts"][owners]
+        sentences = batch["sentence"][labeled]
+        groups = batch["group"][labeled].to(device, non_blocking=True) if "group" in batch else None
+        gold = batch["gold"][task][labeled].to(device, non_blocking=True)
+        ids, attention, word_ids, hidden, counts = (batch[key].to(device, non_blocking=True)
+            for key in ("ids", "attention", "word_ids", "hidden", "word_counts"))
         chunk = chunk_size(ids, cfg)
-        padded = F.pad(lengths, (0, -len(focal) % chunk))
-        widths = padded.view(-1, chunk).amax(dim=1).tolist()
-        for start, width in zip(range(0, len(focal), chunk), widths):
-            stop = min(start + chunk, len(focal))
+        pad = -len(focals) % chunk
+        widths = F.pad(lengths, (0, pad)).view(-1, chunk).amax(dim=1).tolist()
+        word_widths = F.pad(word_lengths, (0, pad)).view(-1, chunk).amax(dim=1).tolist()
+        source = owners.tolist()
+        owners = owners.to(device, non_blocking=True)
+        for start, width, word_width in zip(range(0, len(focals), chunk), widths, word_widths):
+            stop = min(start + chunk, len(focals))
             part = slice(start, stop)
+            first, last = source[start], source[stop - 1]
             owner = owners[part]
-            first, last = sentence_owners[start], sentence_owners[stop - 1]
-            yield (ids[owner, :width], attention[owner, :width], hidden[first:last + 1, :width],
-                   focal[part], owner - first, batch["sentence"][part], {task: y[part] for task, y in gold.items()},
-                   None if fill is None else fill[owner, :width].transpose(1, 2))
+            yield {"ids": ids[owner, :width], "attention": attention[owner, :width],
+                   "word_ids": word_ids[owner, :width], "hidden": hidden[first:last + 1, :word_width],
+                   "focal": focals[part], "owner": owner - first, "counts": counts[owner],
+                   "sentence": sentences[part], "gold": gold[part],
+                   "group": None if groups is None else groups[part]}
 
 
 def replacement_positions(replace):
@@ -113,51 +129,88 @@ def mlm_probabilities(encoder, ids, attention, positions, special, cfg):
 
 
 @torch.no_grad()
-def precompute_fills(encoder, rows, special, cfg):
-    device = cfg.runtime.device
-    draws = cfg.certification.training_draws
-    rng = torch.Generator(device=device).manual_seed(cfg.seed)
-    fills = []
-    for batch in loader(rows, cfg):
-        ids, attention = (batch[key].to(device, non_blocking=True) for key in ("ids", "attention"))
-        columns = torch.arange(ids.shape[1], device=device)[None]
-        eligible = attention & (columns > 0) & (columns < attention.sum(-1, keepdim=True) - 1)
-        fill = ids[..., None].expand(-1, -1, draws).clone()
-        owners, positions = eligible.nonzero(as_tuple=True)
-        size = chunk_size(ids, cfg)
-        for owner, position in zip(owners.split(size), positions.split(size)):
-            if not len(owner):
-                continue
-            masked = ids[owner].clone()
-            masked[torch.arange(len(owner), device=device), position] = special["mask"]
-            probabilities = mlm_probabilities(encoder, masked, attention[owner], position, special, cfg)
-            fill[owner, position] = torch.multinomial(probabilities, draws, replacement=True, generator=rng)
-        fills.extend(values[:length].clone() for values, length in zip(fill.cpu(), batch["lengths"].tolist()))
-    return [{**row, "fill": values} for row, values in zip(rows, fills)]
+def independent_fills(encoder, ids, attention, drop, draws, special, cfg, rng):
+    fill = ids[:, None].expand(-1, draws, -1).transpose(1, 2).clone()
+    active = drop.any(-1).nonzero().flatten()
+    # Bound the number of vocabulary distributions kept in memory at once.
+    batch_rows = min(chunk_size(ids, cfg), max(1, cfg.runtime.mlm_position_budget // ids.shape[1]))
+    for rows in active.split(batch_rows):
+        if not len(rows):
+            continue
+        masked = ids[rows].masked_fill(drop[rows], special["mask"])
+        positions = drop[rows]
+        probabilities = mlm_probabilities(encoder, masked, attention[rows], positions, special, cfg)
+        owner, column = positions.nonzero(as_tuple=True)
+        fill[rows[owner], column] = torch.multinomial(probabilities, draws, replacement=True, generator=rng)
+    return fill.transpose(1, 2)
 
 
-def score_draws(encoder, scorer, ids, attention, focal, fill, gate, cfg):
-    def log_probabilities(ids, attention, focal, fill, gate):
+def scorer_log_probs(scorer, features, cfg):
+    with autocast(cfg):
+        logits = scorer(features.float()[:, None]).squeeze(1).float()
+    return logits.log_softmax(-1)
+
+
+def predicted_group(log_probs, outside):
+    label = log_probs.argmax(-1)
+    return torch.zeros_like(label) if outside is None else label.ne(outside).long()
+
+
+def label_groups(labels):
+    return (("O", "entity"), labels.index("O")) if "O" in labels else (("all",), None)
+
+
+def batch_scores(selector, batch):
+    eligible = context(batch["counts"], batch["focal"], batch["hidden"].shape[1])
+    scores = selector(batch["hidden"], batch["focal"], batch["owner"])
+    return scores, eligible
+
+
+def draw_features(encoder, ids, attention, word_ids, focal, fills, cfg, gates=None, raw=None):
+    n, draws, _ = fills.shape
+    owners = torch.arange(n, device=ids.device).repeat_interleave(draws)
+    size = chunk_size(ids, cfg, cfg.runtime.selector_score_batch_size)
+    parts = []
+
+    def interpolate(ids, attention, word_ids, focal, replacements, gates):
         with autocast(cfg):
-            features = encoder(ids, attention, focal, replacement_ids=fill, gates=gate)["features"]
-            logits = scorer(features.float()[:, None]).squeeze(1).float()
-        return logits.log_softmax(-1)
+            return focal_vectors(encoder, ids, attention, word_ids, focal, replacements, gates)
 
-    n, draws, _ = fill.shape
-    owners = torch.arange(n, device=fill.device).repeat_interleave(draws)
-    score_batch = chunk_size(ids, cfg, cfg.runtime.selector_score_batch_size)
-    scores = []
-    for owner, replacements in zip(owners.split(score_batch), fill.flatten(0, 1).split(score_batch)):
-        inputs = (ids[owner], attention[owner], focal[owner], replacements, gate[owner])
-        scores.append(checkpoint(log_probabilities, *inputs, use_reentrant=False)
-                      if cfg.runtime.activation_checkpointing else log_probabilities(*inputs))
-    return torch.cat(scores).view(n, draws, -1)
+    if raw is not None:
+        features = raw[:, None].expand(-1, draws, -1).clone()
+        owner, draw = (fills != ids[:, None]).any(-1).nonzero(as_tuple=True)
+        if len(owner):
+            keys = torch.cat((owner[:, None], fills[owner, draw]), dim=-1)
+            queries, inverse = torch.unique(keys, dim=0, return_inverse=True)
+            for query in queries.split(size):
+                row = query[:, 0]
+                with autocast(cfg):
+                    parts.append(focal_vectors(encoder, query[:, 1:].contiguous(), attention[row],
+                                               word_ids[row], focal[row]))
+            features[owner, draw] = torch.cat(parts)[inverse]
+        return features
+
+    for owner, replacement in zip(owners.split(size), fills.flatten(0, 1).split(size)):
+        if gates is None:
+            with autocast(cfg):
+                parts.append(focal_vectors(encoder, replacement, attention[owner], word_ids[owner], focal[owner]))
+        else:
+            args = (ids[owner], attention[owner], word_ids[owner], focal[owner], replacement, gates[owner])
+            parts.append(checkpoint(interpolate, *args, use_reentrant=False)
+                         if cfg.runtime.activation_checkpointing else interpolate(*args))
+    return torch.cat(parts).reshape(n, draws, -1)
+
+
+def gold_log_probabilities(scorer, features, gold, cfg):
+    n, draws, _ = features.shape
+    log_probs = scorer_log_probs(scorer, features.flatten(0, 1), cfg).view(n, draws, -1)
+    return log_probs.gather(-1, gold[:, None, None].expand(-1, draws, 1)).squeeze(-1)
 
 
 def scorer_stage(cfg, output):
     bank = load(cfg)
     encoder = masked_encoder(cfg)
-    full = full_features(encoder, {name: bank["sets"][name] for name in ("train", "validation")}, cfg)
+    full = full_features(encoder, {name: bank["sets"][name] for name in ("train", "validation")}, cfg, dtype=torch.float32)
     torch.save(full, output / "full_features.pt")
     train = bank["sets"]["train"]
     for task in task_names(cfg):
@@ -196,20 +249,12 @@ def experiment(cfg, output, started=None):
     encoder = masked_encoder(cfg)
     draws = cfg.certification.training_draws
     reference = cfg.certification.timing_reference_seconds
-    cap = cfg.certification.get("selector_train_focals_per_fold")
-    if cap is not None and cap <= 0:
-        raise ValueError("certification.selector_train_focals_per_fold must be positive.")
-    timed = reference is not None
+    cap = cfg.certification.selector_train_focals_per_fold
     tasks = task_names(cfg)
-    folds = ("g1", "g2") if cfg.stage.fold is None else (cfg.stage.fold,)
-    training_rows = {fold: [row for row in bank["sets"]["train"] if row["fold"] == fold] for fold in folds}
-    remaining = 0
-    if timed:
-        for task in tasks:
-            for rows in training_rows.values():
-                candidates = int(torch.cat([row["gold"][task] for row in rows]).ge(0).sum())
-                remaining += candidates if cap is None else min(candidates, cap)
-        remaining *= cfg.certification.selector_epochs
+    folds = (("g1", "g2") if cfg.stage.fold is None else (cfg.stage.fold,))
+    raw = raw_rows(cfg, bank)
+    training_rows = {fold: [row for row in raw if row["fold"] == fold] for fold in folds}
+    rng = torch.Generator(device=cfg.runtime.device).manual_seed(cfg.seed)
     for task in tasks:
         scorer = load_model(paths(cfg) / "scorer" / task, cfg).requires_grad_(False)
         dimension = scorer.weight.shape[1]
@@ -219,7 +264,6 @@ def experiment(cfg, output, started=None):
             optimizer = torch.optim.AdamW(selector.parameters(), lr=cfg.certification.selector_lr,
                                           weight_decay=cfg.train.weight_decay)
             rows = training_rows[fold]
-            history = []
             folder = output / task / fold
             folder.mkdir(parents=True, exist_ok=True)
             if cap is not None:
@@ -233,59 +277,51 @@ def experiment(cfg, output, started=None):
                     {"label": label, "available_focals": available, "sampled_focals": count}
                     for label, available, count in zip(labels, original_counts, sampled_counts)
                 ])
-            print(f"Precomputing four single-position fill-ins for {task}/{fold} on {len(rows)} sentences", flush=True)
-            rows = precompute_fills(encoder, rows, bank["special"], cfg)
             batches = loader(rows, cfg, train=True)
-            print(f"Train selector {task}/{fold} on {len(rows)} sentences", flush=True)
-            fitted_chunks = 0
-            measured_words = 0
-            if timed and cfg.runtime.device.startswith("cuda"):
-                torch.cuda.synchronize()
+            total = sum(int((row["gold"][task] >= 0).sum()) for row in rows) * cfg.certification.selector_epochs
+            print(f"Train ranking selector {task}/{fold} on {total // cfg.certification.selector_epochs} word focals", flush=True)
+            history = []
+            fitted_chunks = measured_words = 0
             sampling_start = time.monotonic()
             for epoch in range(1, cfg.certification.selector_epochs + 1):
                 totals = torch.zeros(4, device=cfg.runtime.device)
-                for ids, attention, hidden, focal, owner, _, gold, fill in focal_batches(encoder, batches, cfg):
-                    labeled = (gold[task] >= 0).nonzero().flatten()
-                    if not len(labeled):
-                        continue
-                    ids, attention, focal, owner = ids[labeled], attention[labeled], focal[labeled], owner[labeled]
-                    y = gold[task][labeled]
-                    eligible = context(attention, focal)
-                    gate, mass = selector(hidden, focal, draw=True, owner=owner)
-                    gate = torch.where(eligible, gate, 1.0)
-                    log_probability = score_draws(encoder, scorer, ids, attention, focal, fill[labeled], gate, cfg)
-                    observed = log_probability.gather(-1, y[:, None, None].expand(-1, draws, 1)).squeeze(-1)
-                    ce = (math.log(draws) - observed.logsumexp(-1)).mean()
-                    size = (mass * eligible).sum(-1).mean()
-                    loss = ce + cfg.certification.size_penalty * size
+                for batch in focal_batches(batches, task, cfg):
+                    ids, attention, word_ids, focal, y = (batch[key] for key in
+                        ("ids", "attention", "word_ids", "focal", "gold"))
+                    scores, eligible = batch_scores(selector, batch)
+                    available = eligible.sum(-1)
+                    rho = torch.rand(len(y), device=ids.device, generator=rng)
+                    budgets = word_budget(rho, available)
+                    keep = kept_words(ranks(scores.detach(), eligible), eligible, budgets)
+                    drop = word_to_pieces(~keep, word_ids, False)
+                    fill = independent_fills(encoder, ids, attention, drop, draws, bank["special"], cfg, rng)
+                    gate = word_to_pieces(soft_keep(scores, eligible, budgets, cfg), word_ids, 1.0)
+                    features = draw_features(encoder, ids, attention, word_ids, focal, fill, cfg, gates=gate)
+                    observed = gold_log_probabilities(scorer, features, y, cfg)
+                    loss = (math.log(draws) - observed.logsumexp(-1)).mean()
                     optimizer.zero_grad(set_to_none=True)
                     loss.backward()
                     if cfg.train.clip is not None:
                         torch.nn.utils.clip_grad_norm_(selector.parameters(), cfg.train.clip)
                     optimizer.step()
-                    totals[:3] += torch.stack((loss.detach(), ce.detach(), size.detach())) * len(y)
-                    totals[3] += len(y)
-                    if timed:
-                        remaining -= len(y)
-                        fitted_chunks += 1
-                        measured_words += len(y)
-                        if fitted_chunks == cfg.certification.timing_chunks:
-                            if cfg.runtime.device.startswith("cuda"):
-                                torch.cuda.synchronize()
-                            rate = (time.monotonic() - sampling_start) / measured_words
-                            elapsed = time.monotonic() - started
-                            estimate = elapsed + remaining * rate
-                            timing = {"projected_through_selector_seconds": estimate, "elapsed_seconds": elapsed,
-                                      "projected_folds": list(folds),
-                                      "seconds_per_training_word": rate, "timed_words": measured_words,
-                                      "reference_seconds": reference, "above_reference": estimate >= reference}
-                            save_json(folder / "timing.json", timing)
-                            print(f"{task}/{fold}: estimated {estimate / 3600:.2f}h through selector training "
-                                  f"(reference {reference / 3600:g}h)", flush=True)
-                loss, ce, size = (totals[:3] / totals[3]).tolist()
-                history.append({"epoch": epoch, "loss": loss, "cross_entropy": ce, "expected_size": size,
-                                "words": int(totals[3])})
-                print(f"{task}/{fold} epoch {epoch}: CE {ce:.4f}, expected context {size:.2f}", flush=True)
+                    totals += torch.stack((loss.detach() * len(y), budgets.sum(), available.sum(),
+                                           available.new_tensor(len(y))))
+                    fitted_chunks += 1
+                    measured_words += len(y)
+                    if reference is not None and fitted_chunks == cfg.certification.timing_chunks:
+                        if ids.is_cuda:
+                            torch.cuda.synchronize()
+                        rate = (time.monotonic() - sampling_start) / measured_words
+                        elapsed = time.monotonic() - started
+                        estimate = elapsed + (total - measured_words) * rate
+                        save_json(folder / "timing.json", {"projected_through_selector_seconds": estimate,
+                                  "elapsed_seconds": elapsed, "seconds_per_training_word": rate,
+                                  "timed_words": measured_words, "reference_seconds": reference})
+                        print(f"{task}/{fold}: projected through selector training {estimate / 3600:.2f}h", flush=True)
+                loss, kept, available, words = (totals / totals[3]).tolist()
+                history.append({"epoch": epoch, "cross_entropy": loss, "mean_training_kept": kept,
+                                "mean_context_words": available, "words": int(totals[3])})
+                print(f"{task}/{fold} epoch {epoch}: CE {loss:.4f}, mean budget {kept:.2f}/{available:.2f}", flush=True)
             torch.save({"state": selector.state_dict(), "dimension": dimension}, folder / "model.pt")
             write_csv(folder / "history.csv", history)
     return {"selectors": len(folds) * len(tasks)}

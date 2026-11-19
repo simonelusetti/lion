@@ -1,7 +1,6 @@
-"""Mask-conditional sufficiency, minimality and cross-entropy certification."""
+"""Word-level CRTs and held-out cross-entropy certificates."""
 import math
 import time
-from collections import defaultdict
 
 import torch
 from torch.utils.data import DataLoader
@@ -10,31 +9,11 @@ from ..diagnostics.common import read_csv, save_json, write_csv
 from ..encoder import load_masked_encoder as masked_encoder
 from ..partition.train import load_model
 from ..runtime import autocast
-from .data import collate, context, load, paths, task_names, unique_queries
-from .selector import chunk_size, load_selector, mlm_probabilities, replacement_positions
-
-
-def held_out(rows, task, cfg):
-    documents = defaultdict(list)
-    if rows:
-        targets = [row["gold"][task] for row in rows]
-        owner = torch.arange(len(rows)).repeat_interleave(torch.tensor([len(target) for target in targets]))
-        eligible = owner[torch.cat(targets) >= 0].unique_consecutive().tolist()
-        for index in eligible:
-            row = rows[index]
-            documents[row["document"]].append(row)
-    rng = torch.Generator().manual_seed(cfg.seed)
-    order = torch.randperm(len(documents), generator=rng)[:cfg.certification.test_documents]
-    names = sorted(documents)
-    selected = []
-    for index in order.tolist():
-        candidates = documents[names[index]]
-        row = candidates[int(torch.randint(len(candidates), (), generator=rng))]
-        options = (row["gold"][task] >= 0).nonzero().flatten()
-        chosen = options[torch.randint(len(options), (1,), generator=rng)]
-        selected.append({**row, "focals": row["focals"][chosen],
-                         "gold": {key: value[chosen] for key, value in row["gold"].items()}})
-    return selected
+from .calibrate import sample_group_rows
+from .data import collate, context, focal_vectors, load, paths, pool_words, task_names, unique_queries, word_to_pieces
+from .selector import (batch_scores, chunk_size, focal_batches, kept_words, label_groups, load_selector,
+                       mlm_probabilities, predicted_group, ranks, raw_rows, replacement_positions,
+                       scorer_log_probs, word_budget)
 
 
 @torch.no_grad()
@@ -101,22 +80,23 @@ def regeneration(encoder, ids, attention, replace, special, cfg, groups=1):
 
 
 @torch.no_grad()
-def accepted_draws(encoder, selector, ids, attention, focal, keep, replace, special, cfg, rng, groups=1,
-                   draws=None):
-    n, width = ids.shape
+def accepted_draws(encoder, selector, scorer, ids, attention, word_ids, counts, focal, gold, original,
+                   keep, replace, expected_group, fractions, outside, special, cfg, rng, groups=1):
+    n = len(ids)
     device = ids.device
-    cleaning = draws is not None
-    draws = cfg.certification.draws if draws is None else draws
+    draws = cfg.certification.draws
     limit = cfg.certification.max_proposals
     attempts = torch.zeros(n, dtype=torch.long, device=device)
     passes = torch.zeros_like(attempts)
     found = torch.zeros_like(attempts)
-    accepted = torch.empty(n, draws, width, dtype=ids.dtype, device=device)
+    accepted = original.new_full((n, draws), torch.nan)
     has_targets = replace.any(-1)
     if not has_targets.any():
         return accepted, found, passes, attempts
     positions = replacement_positions(replace)
     masked = ids.masked_fill(replace, special["mask"])
+    eligible_context = context(counts, focal, keep.shape[1])
+    fixed_mask = (~eligible_context | keep).all(-1) | (~eligible_context | ~keep).all(-1)
     batch_size = min(cfg.certification.proposal_batch_size, chunk_size(ids, cfg))
     starts = has_targets.nonzero().flatten()
     first_ids, first_attention, first_position, inverse = unique_queries(
@@ -128,14 +108,13 @@ def accepted_draws(encoder, selector, ids, attention, focal, keep, replace, spec
     rows_per_group = n // groups
     width_per_group = replace.sum(-1).view(groups, rows_per_group).amax(-1)
     # Use the same RNG shapes and order as separate conditions before sharing any encoder calls.
-    if not cleaning:
-        uniforms = torch.empty((n, limit, positions.shape[1]), device=device)
-        for index, steps in enumerate(width_per_group.tolist()):
-            if steps:
-                uniforms[index * rows_per_group:(index + 1) * rows_per_group, :, :steps] = torch.rand(
-                    (rows_per_group, limit, steps), device=device, generator=rng
-                )
-    repetitions = 1 if cleaning else max(1, batch_size // rows_per_group)
+    uniforms = torch.empty((n, limit, positions.shape[1]), device=device)
+    for index, steps in enumerate(width_per_group.tolist()):
+        if steps:
+            uniforms[index * rows_per_group:(index + 1) * rows_per_group, :, :steps] = torch.rand(
+                (rows_per_group, limit, steps), device=device, generator=rng
+            )
+    repetitions = max(1, batch_size // rows_per_group)
     window = max(1, cfg.certification.proposal_batch_size // (n * repetitions)) * repetitions
     short = (width_per_group <= cfg.runtime.crt_prefetch_max_positions).repeat_interleave(rows_per_group)
     lookahead = torch.where(short, window, repetitions)
@@ -149,23 +128,41 @@ def accepted_draws(encoder, selector, ids, attention, focal, keep, replace, spec
         requested = torch.minimum(torch.minimum(lookahead[active], rounded), limit - attempts[active])
         row, offset = (offsets[None] < requested[:, None]).nonzero(as_tuple=True)
         owners = active[row]
-        draws_now = (torch.rand((len(owners), positions.shape[1]), device=device, generator=rng) if cleaning else
-                     uniforms[owners, attempts[owners] + offset])
+        draws_now = uniforms[owners, attempts[owners] + offset]
         candidates = chain(encoder, masked[owners], attention[owners], positions[owners],
                            special, cfg, draws_now, first_cdf, first_owner[owners], batch_size)
         same_mask = (candidates == ids[owners]).all(-1)
+        candidate_scores = original[owners].clone()
         changed = (~same_mask).nonzero().flatten()
         if len(changed):
             source = owners[changed]
-            inputs, valid_positions, query_focal, inverse = unique_queries(
-                candidates[changed], attention[source], focal[source]
-            )
-            with autocast(cfg):
-                hidden = torch.cat([encoder(*batch)["features"] for batch in
-                                    zip(inputs.split(batch_size), valid_positions.split(batch_size))])
-            eligible = context(valid_positions, query_focal)
-            mask = selector.mask(hidden, query_focal, eligible)
-            same_mask[changed] = (mask[inverse] == keep[source]).all(-1)
+            keys = torch.cat((source[:, None], candidates[changed]), dim=-1)
+            queries, inverse = torch.unique(keys, dim=0, return_inverse=True)
+            query_source, query_ids = queries[:, 0], queries[:, 1:].contiguous()
+            matches, scores = [], []
+            fixed = bool(fixed_mask[query_source].all())
+            for pool, base in zip(query_ids.split(batch_size), query_source.split(batch_size)):
+                query_focal = focal[base]
+                with autocast(cfg):
+                    if fixed:
+                        features = focal_vectors(encoder, pool, attention[base], word_ids[base], query_focal)
+                    else:
+                        vectors = encoder(pool, attention[base])["features"]
+                        hidden = pool_words(vectors, word_ids[base], keep.shape[1])
+                        features = hidden[torch.arange(len(base), device=device), query_focal]
+                raw = scorer_log_probs(scorer, features, cfg)
+                group = predicted_group(raw, outside)
+                # Stratified CRT rows also condition on the scorer-predicted group.
+                match = group == expected_group[base]
+                if not fixed:
+                    eligible = eligible_context[base]
+                    budgets = word_budget(fractions[group], eligible.sum(-1))
+                    mask = kept_words(ranks(selector(hidden, query_focal), eligible), eligible, budgets)
+                    match &= (mask == keep[base]).all(-1)
+                matches.append(match)
+                scores.append(raw.gather(1, gold[base, None]).squeeze(1))
+            same_mask[changed] = torch.cat(matches)[inverse]
+            candidate_scores[changed] = torch.cat(scores)[inverse]
         valid = torch.zeros((len(active), window), dtype=torch.bool, device=device)
         valid[row, offset] = same_mask
         cumulative = found[active, None] + valid.cumsum(dim=-1)
@@ -176,65 +173,12 @@ def accepted_draws(encoder, selector, ids, attention, focal, keep, replace, spec
         reported = valid & (offsets[None] < consumed[:, None])
         slot = cumulative[row, offset] - 1
         store = reported[row, offset] & (slot < draws)
-        accepted[owners[store], slot[store]] = candidates[store]
+        accepted[owners[store], slot[store]] = candidate_scores[store]
         successes = reported.sum(-1)
         attempts[active] += consumed
         passes[active] += successes
         found[active] = (found[active] + successes).clamp_max(draws)
     return accepted, found, passes, attempts
-
-
-@torch.no_grad()
-def score_features(scorer, features, gold, cfg):
-    with autocast(cfg):
-        logits = scorer(features.float()[:, None]).squeeze(1).float()
-    return logits.log_softmax(-1).gather(1, gold[:, None]).squeeze(1)
-
-
-@torch.no_grad()
-def log_probabilities(encoder, scorer, ids, attention, focal, gold, cfg):
-    inputs, valid, positions, inverse = unique_queries(ids, attention, focal)
-    size = chunk_size(ids, cfg)
-    with autocast(cfg):
-        features = torch.cat([encoder(*batch)["features"] for batch in
-                              zip(inputs.split(size), valid.split(size), positions.split(size))])
-    return score_features(scorer, features[inverse], gold, cfg)
-
-
-@torch.no_grad()
-def conditions(encoder, selector, scorer, ids, attention, focal, gold, keep, drop,
-               target, original, special, cfg, rng):
-    # Sufficiency redraws D. Minimality redraws j alone, leaving all of x_{-j} visible.
-    points = len(ids)
-    ids, attention, focal, gold, keep, original = (torch.cat((value, value)) for value in
-                                                   (ids, attention, focal, gold, keep, original))
-    replace = torch.cat((drop, target))
-    accepted, found, passes, attempts = accepted_draws(
-        encoder, selector, ids, attention, focal, keep, replace, special, cfg, rng, groups=2,
-    )
-    draws = cfg.certification.draws
-    no_targets = ~replace.any(-1)
-    scores = torch.full((len(ids), draws), torch.nan, device=ids.device)
-    scores[no_targets] = original[no_targets, None]
-    row, draw = (torch.arange(draws, device=ids.device)[None] < found[:, None]).nonzero(as_tuple=True)
-    values = accepted[row, draw]
-    same = (values == ids[row]).all(-1)
-    scores[row[same], draw[same]] = original[row[same]]
-    if (~same).any():
-        changed = row[~same]
-        scores[changed, draw[~same]] = log_probabilities(
-            encoder, scorer, values[~same], attention[changed], focal[changed], gold[changed], cfg,
-        )
-    errors, nll, entropy = regeneration(encoder, ids, attention, replace, special, cfg, groups=2)
-    results = {"original": original, "resampled": scores, "found": found, "passes": passes, "attempts": attempts,
-               "mlm_tokens": replace.sum(-1), "mlm_errors": errors.sum(-1), "mlm_nll": nll.sum(-1),
-               "mlm_entropy": entropy.sum(-1),
-               "position": torch.where(replace.sum(-1) == 1, replace.long().argmax(-1), -1)}
-    sufficiency = {key: value[:points].cpu() for key, value in results.items()}
-    minimality = {key: value[points:].cpu() for key, value in results.items()}
-    first = torch.where((found[:points] > 0)[:, None], accepted[:points, 0], ids[:points]).cpu()
-    reusable = ((found[:points] > 0) | no_targets[:points]).cpu()
-    return sufficiency, minimality, first, reusable
 
 
 def summarize(values, cfg, sufficiency):
@@ -285,118 +229,174 @@ def certificate(values, classes, cfg):
 
 
 @torch.no_grad()
-def evaluate_rows(encoder, selector, scorer, rows, bank, task, cfg, rng):
+def conditions(encoder, selector, scorer, batch, keep, drop, target, original, fractions, outside, special, cfg, rng):
+    ids, attention, word_ids, counts, focal, gold, group = (batch[key] for key in
+        ("ids", "attention", "word_ids", "counts", "focal", "gold", "group"))
+    points = len(ids)
+    ids, attention, word_ids, counts, focal, gold, group, keep, original = (
+        torch.cat((value, value)) for value in (ids, attention, word_ids, counts, focal, gold, group, keep, original))
+    replace = torch.cat((drop, target))
+    scores, found, passes, attempts = accepted_draws(
+        encoder, selector, scorer, ids, attention, word_ids, counts, focal, gold, original, keep, replace, group,
+        fractions, outside, special, cfg, rng, groups=2,
+    )
+    no_targets = ~replace.any(-1)
+    scores[no_targets] = original[no_targets, None]
+    errors, nll, entropy = regeneration(encoder, ids, attention, replace, special, cfg, groups=2)
+    results = {"original": original, "resampled": scores, "found": found, "passes": passes, "attempts": attempts,
+               "mlm_tokens": replace.sum(-1), "mlm_errors": errors.sum(-1), "mlm_nll": nll.sum(-1),
+               "mlm_entropy": entropy.sum(-1)}
+    return ({key: value[:points].cpu() for key, value in results.items()},
+            {key: value[points:].cpu() for key, value in results.items()})
+
+
+@torch.no_grad()
+def evaluate_rows(encoder, selector, scorer, rows, fractions, outside, special, task, cfg, rng):
     device = cfg.runtime.device
-    special = bank["special"]
     rows = sorted(rows, key=lambda row: len(row["ids"]))
     records = ([], [])
     masks = []
-    fills = []
-    loader = DataLoader(rows, collate_fn=collate, batch_size=cfg.certification.test_batch_size,
-                        num_workers=cfg.runtime.workers, pin_memory=device.startswith("cuda"))
-    for batch in loader:
-        ids, attention, focal = (batch[key].to(device, non_blocking=True) for key in ("ids", "attention", "focal"))
-        gold = batch["gold"][task].to(device)
-        with autocast(cfg):
-            hidden = encoder(ids, attention)["features"]
-        eligible = context(attention, focal)
-        keep = selector.mask(hidden, focal, eligible)
-        drop, retained = eligible & ~keep, eligible & keep
-        random = torch.rand(ids.shape, device=device, generator=rng).masked_fill(~retained, -1)
-        target = retained & torch.zeros_like(retained).scatter_(1, random.argmax(-1, keepdim=True), True)
-        original = score_features(scorer, hidden[torch.arange(len(ids), device=device), focal], gold, cfg)
-        sufficiency, minimality, first, reusable = conditions(
-            encoder, selector, scorer, ids, attention, focal, gold, keep, drop, target, original, special, cfg, rng
-        )
+    batches = DataLoader(rows, collate_fn=collate, batch_size=cfg.certification.test_batch_size,
+                         num_workers=cfg.runtime.workers, pin_memory=device.startswith("cuda"))
+    for batch in focal_batches(batches, task, cfg):
+        scores, eligible = batch_scores(selector, batch)
+        budgets = word_budget(fractions[batch["group"]], eligible.sum(-1))
+        keep = kept_words(ranks(scores, eligible), eligible, budgets)
+        retained, dropped = eligible & keep, eligible & ~keep
+        random = torch.rand(keep.shape, device=device, generator=rng).masked_fill(~retained, -1)
+        selected = random.argmax(-1)
+        target = retained & torch.arange(keep.shape[1], device=device)[None].eq(selected[:, None])
+        drop_pieces = word_to_pieces(dropped, batch["word_ids"], False)
+        target_pieces = word_to_pieces(target, batch["word_ids"], False)
+        original = scorer_log_probs(scorer, batch["hidden"][batch["owner"], batch["focal"]], cfg)
+        gold = original.gather(1, batch["gold"][:, None]).squeeze(1)
+        sufficiency, minimality = conditions(encoder, selector, scorer, batch, keep, drop_pieces, target_pieces,
+                                             gold, fractions, outside, special, cfg, rng)
+        minimality["position"] = torch.where(target.any(-1), selected, -1).cpu()
         records[0].append(sufficiency)
         records[1].append(minimality)
         kept = retained.nonzero(as_tuple=True)[1].cpu().split(retained.sum(-1).tolist())
-        dropped = drop.nonzero(as_tuple=True)[1].cpu().split(drop.sum(-1).tolist())
-        masks.extend({"kept": k, "dropped": d} for k, d in zip(kept, dropped))
-        fills.extend(value[:length].clone() if valid else None
-                     for value, length, valid in zip(first, batch["lengths"].tolist(), reusable.tolist()))
-    return rows, records, masks, fills
+        removed = dropped.nonzero(as_tuple=True)[1].cpu().split(dropped.sum(-1).tolist())
+        masks.extend({"kept": kept_words, "dropped": dropped_words} for kept_words, dropped_words in zip(kept, removed))
+    return [{key: value for key, value in row.items() if key != "hidden"} for row in rows], records, masks
 
 
+def subgroup(rows, index):
+    sampled = []
+    for row in rows:
+        keep = row["group"].eq(index)
+        if keep.any():
+            sampled.append({**row, "focals": row["focals"][keep], "group": row["group"][keep],
+                            "gold": {key: labels[keep] for key, labels in row["gold"].items()}})
+    return sampled
+
+
+def group_test(encoder, selector, scorer, rows, fractions, outside, bank, cfg, meta, folder, budget):
+    rng = torch.Generator(device=cfg.runtime.device).manual_seed(cfg.seed)
+    pilot = max(1, math.ceil(0.01 * len(rows))) if rows else 0
+    start = time.monotonic()
+    def test(part):
+        return evaluate_rows(encoder, selector, scorer, part, fractions, outside, bank["special"], meta["task"], cfg, rng)
+
+    selected, records, masks = test(rows[:pilot]) if pilot else ([], ([], []), [])
+    elapsed = time.monotonic() - start
+    estimate = elapsed * len(rows) / pilot if pilot else 0.0
+    retained = max(pilot, min(len(rows), int(budget * pilot / elapsed))) if pilot else 0
+    label = f"{meta['task']}/{meta['selector']}/{meta['group']}"
+    print(f"CRT {label}: pilot {pilot}/{len(rows)} rows, projected {estimate / 3600:.2f}h, "
+          f"using {retained} rows with {cfg.certification.draws} draws", flush=True)
+    if retained > pilot:
+        more, additional, more_masks = test(rows[pilot:retained])
+        selected.extend(more)
+        masks.extend(more_masks)
+        for saved, extra in zip(records, additional):
+            saved.extend(extra)
+    save_json(folder / f"{meta['selector']}_{meta['group']}_timing.json", {
+        "available_rows": len(rows), "pilot_rows": pilot, "pilot_seconds": elapsed,
+        "estimated_all_seconds": estimate, "selected_rows": retained, "draws": cfg.certification.draws,
+        "seconds": time.monotonic() - start,
+    })
+    totals = []
+    artifacts = {"rows": selected, "masks": masks}
+    bound = {"rows": 0}
+    for kind, batches in zip(("sufficiency", "minimality"), records):
+        if batches:
+            values = {key: torch.cat([batch[key] for batch in batches]) for key in batches[0]}
+            summary = summarize(values, cfg, sufficiency=kind == "sufficiency")
+            artifacts[kind] = values
+            if kind == "sufficiency":
+                bound = certificate(values, len(bank["labels"][meta["task"]]), cfg)
+        else:
+            summary = {"eligible_rows": 0, "complete_rows": 0, "pooled_rows": 0, "p": None, "effect": None}
+        totals.append({**meta, "test": kind, **summary})
+    counts = [(len(mask["kept"]), len(mask["dropped"])) for mask in masks]
+    mean_kept = sum(k for k, _ in counts) / len(counts) if counts else None
+    mean_dropped = sum(d for _, d in counts) / len(counts) if counts else None
+    kept_fractions = [k / (k + d) for k, d in counts if k + d]
+    size = {"rows": len(counts), "mean_kept_context": mean_kept, "mean_dropped_context": mean_dropped,
+            "kept_fraction": sum(kept_fractions) / len(kept_fractions) if kept_fractions else None}
+    p = totals[0]["p"]
+    gap = bound.get("cross_entropy_gap")
+    passed = p is not None and gap is not None and p > cfg.certification.alpha and gap <= cfg.certification.epsilon
+    gate = {**meta, "p": p, "alpha": cfg.certification.alpha, "cross_entropy_gap": gap,
+            "epsilon": cfg.certification.epsilon, "passed": passed}
+    print(f"CRT {label}: sufficiency p={p}, certificate gap={gap}, gate {'passed' if passed else 'failed'}", flush=True)
+    return totals, {**meta, **bound}, {**meta, **size}, gate, artifacts
+
+
+@torch.no_grad()
 def experiment(cfg, output):
     bank = load(cfg)
+    raw = {row["sentence"]: row for row in raw_rows(cfg, bank)}
     encoder = masked_encoder(cfg)
-    device = cfg.runtime.device
-    summaries, bounds, sizes = [], [], []
     pairs = (("g1", "g2"), ("g2", "g1"))
     if cfg.stage.fold is not None:
-        pairs = tuple((fold, opposite) for fold, opposite in pairs if fold == cfg.stage.fold)
+        pairs = tuple(pair for pair in pairs if pair[0] == cfg.stage.fold)
     tasks = task_names(cfg)
-    budget = cfg.certification.test_budget_seconds / (len(tasks) * len(pairs))
+    summaries, bounds, sizes, gates = [], [], [], []
     for task in tasks:
-        scorer = load_model(paths(cfg) / "scorer" / task, cfg).requires_grad_(False)
+        names, outside = label_groups(bank["labels"][task])
+        budget = cfg.certification.test_budget_seconds / (len(tasks) * len(pairs) * len(names))
+        scorer = load_model(paths(cfg) / "scorer" / task, cfg)
         folder = output / task
         folder.mkdir(parents=True, exist_ok=True)
         for fold, opposite in pairs:
             selector = load_selector(cfg, task, fold)
-            rows = held_out([row for row in bank["sets"]["train"] if row["fold"] == opposite], task, cfg)
-            if not rows:
-                raise ValueError(f"No labeled diagnostic rows for {task}/{fold}.")
-            rng = torch.Generator(device=device).manual_seed(cfg.seed)
-            pilot_count = max(1, math.ceil(0.01 * len(rows)))
-            start = time.monotonic()
-            selected, records, masks, first_fills = evaluate_rows(
-                encoder, selector, scorer, rows[:pilot_count], bank, task, cfg, rng
-            )
-            pilot_seconds = time.monotonic() - start
-            estimate = pilot_seconds * len(rows) / pilot_count
-            measured_rate = pilot_seconds / pilot_count
-            retained_rows = max(pilot_count, min(len(rows), int(budget / measured_rate)))
-            print(f"{task}/{fold}: 1% pilot {pilot_count}/{len(rows)} rows in {pilot_seconds:.1f}s. "
-                  f"ETA {estimate / 3600:.2f}h for all rows. "
-                  f"Using {retained_rows} rows with {cfg.certification.draws} draws.", flush=True)
-            if retained_rows > pilot_count:
-                more, additional, more_masks, fills = evaluate_rows(
-                    encoder, selector, scorer, rows[pilot_count:retained_rows], bank, task, cfg, rng
-                )
-                selected.extend(more)
-                for result, extra in zip(records, additional):
-                    result.extend(extra)
-                masks.extend(more_masks)
-                first_fills.extend(fills)
-            seconds = time.monotonic() - start
-            meta = {"dataset": cfg.certification.source, "task": task, "selector": fold,
-                    "held_out": opposite, "group_unit": bank["group_unit"]}
-            save_json(folder / f"{fold}_timing.json", {
-                "available_rows": len(rows), "pilot_rows": pilot_count, "pilot_seconds": pilot_seconds,
-                "estimated_all_seconds": estimate, "selected_rows": retained_rows,
-                "draws": cfg.certification.draws, "seconds": seconds,
-            })
-            kept = sum(len(mask["kept"]) for mask in masks)
-            dropped = sum(len(mask["dropped"]) for mask in masks)
-            fractions = [len(mask["kept"]) / (len(mask["kept"]) + len(mask["dropped"]))
-                         for mask in masks if len(mask["kept"]) + len(mask["dropped"])]
-            sizes.append({**meta, "rows": len(selected), "mean_kept_context": kept / len(selected),
-                          "mean_dropped_context": dropped / len(selected),
-                          "kept_fraction": sum(fractions) / len(fractions) if fractions else None})
+            saved = torch.load(paths(cfg) / "calibrate" / task / f"{fold}.pt", weights_only=False)
+            fractions = torch.tensor(saved["fractions"], device=cfg.runtime.device, dtype=torch.float64)
+            sentences = saved["test_sentences"][:cfg.certification.test_documents]
+            sampled = sample_group_rows([raw[sentence] for sentence in sentences], task, scorer, outside, cfg, cfg.seed + 1)
             artifacts = {}
-            for kind, batches in zip(("sufficiency", "minimality"), records):
-                values = {key: torch.cat([batch[key] for batch in batches]) for key in batches[0]}
-                summary = summarize(values, cfg, sufficiency=kind == "sufficiency")
-                summaries.append({**meta, "test": kind, **summary})
-                if kind == "sufficiency":
-                    bounds.append({**meta, **certificate(values, len(bank["labels"][task]), cfg)})
-                artifacts[kind] = values
-                print(f"{task}/{fold} {kind}: {summary['complete_rows']}/{summary['eligible_rows']} complete",
-                      flush=True)
-            torch.save({"rows": selected, "masks": masks, "first_fills": first_fills, **artifacts}, folder / f"{fold}.pt")
+            for index, name in enumerate(names):
+                meta = {"dataset": cfg.certification.source, "task": task, "selector": fold, "held_out": opposite,
+                        "group_unit": "sentence", "group": name, "rho": saved["fractions"][index],
+                        "dropped_wordpiece_counts_visible": True}
+                result, bound, size, gate, detail = group_test(
+                    encoder, selector, scorer, subgroup(sampled, index), fractions, outside,
+                    bank, cfg, meta, folder, budget,
+                )
+                summaries.extend(result)
+                bounds.append(bound)
+                sizes.append(size)
+                gates.append(gate)
+                artifacts[name] = detail
+            torch.save(artifacts, folder / f"{fold}.pt")
     tables = output if cfg.stage.fold is None else output / cfg.stage.fold
     tables.mkdir(parents=True, exist_ok=True)
-    write_csv(tables / "crt.csv", summaries)
-    write_csv(tables / "certificate.csv", bounds)
-    write_csv(tables / "mask_sizes.csv", sizes)
-    return {"selectors": len(bounds)}
+    for name, rows in (("crt", summaries), ("certificate", bounds), ("mask_sizes", sizes), ("gate", gates)):
+        write_csv(tables / f"{name}.csv", rows)
+    return {"groups": len(gates), "passed_groups": sum(gate["passed"] for gate in gates)}
 
 
 def merge_tables(cfg):
     output = paths(cfg) / "certify"
     order = {task: i for i, task in enumerate(task_names(cfg))}
-    for name in ("crt.csv", "certificate.csv", "mask_sizes.csv"):
+    for name in ("crt.csv", "certificate.csv", "mask_sizes.csv", "gate.csv"):
         rows = read_csv(output / "g1" / name) + read_csv(output / "g2" / name)
         rows.sort(key=lambda row: order[row["task"]])
         write_csv(output / name, rows)
+
+
+def gate_passed(cfg):
+    rows = read_csv(paths(cfg) / "certify" / "gate.csv")
+    return bool(rows) and all(row["passed"] == "True" for row in rows)

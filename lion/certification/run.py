@@ -10,17 +10,20 @@ from omegaconf import OmegaConf
 
 from ..diagnostics.common import ROOT, absolute, save_json, write_csv
 from ..runtime import configure
-from . import certify, classify, data, selector
+from . import calibrate, certify, classify, data, selector
 
 
 STAGES = {
     "prepare": data.prepare,
     "scorer": selector.scorer_stage,
     "selector": selector.experiment,
+    "calibrate": calibrate.experiment,
     "certify": certify.experiment,
     "clean": classify.clean,
     "classify": classify.experiment,
 }
+
+FOLD_STAGES = ("selector", "calibrate", "certify", "clean")
 
 SUITE = (
     ("wnut", "ner"), ("conll2003", "ner"), ("wikiann", "ner"), ("fewnerd", "ner"),
@@ -36,7 +39,7 @@ def main(cfg):
         cfg.runtime.device = f"cuda:{cfg.runtime.devices[0]}"
     stage = cfg.stage.experiment
     threads = cfg.runtime.threads
-    if stage in ("selector", "certify", "clean") and cfg.stage.fold is not None and cfg.runtime.selector_cpu_groups is not None:
+    if stage in FOLD_STAGES and cfg.stage.fold is not None and cfg.runtime.selector_cpu_groups is not None:
         threads = min(threads, len(os.sched_getaffinity(0)))
     configure(cfg, threads=threads)
     output = data.paths(cfg) / stage
@@ -48,12 +51,15 @@ def main(cfg):
     started = time.monotonic()
     if stage == "prepare":
         clock.write_text(str(started))
-    if stage == "selector" and cfg.certification.timing_reference_seconds is not None:
+    if stage in ("clean", "classify") and not certify.gate_passed(cfg):
+        print("Held-out gate failed. Skipping cleaned features and classifier comparison.", flush=True)
+        result = {"skipped": True, "reason": "held-out gate failed"}
+    elif stage == "selector" and cfg.certification.timing_reference_seconds is not None:
         result = selector.experiment(cfg, output, started=float(clock.read_text()))
     else:
         result = STAGES[stage](cfg, output)
     timing = {"stage_seconds": time.monotonic() - started}
-    if stage == "classify":
+    if stage == "classify" and not result.get("skipped"):
         timing["wall_seconds"] = time.monotonic() - float(clock.read_text())
         print(f"Experiment wall time: {timing['wall_seconds'] / 3600:.2f}h.", flush=True)
     timing_name = "runtime.json" if cfg.stage.fold is None else f"{cfg.stage.fold}_runtime.json"
@@ -82,10 +88,14 @@ def suite(overrides):
 
 def run_stage(args):
     config_dir = str(ROOT / "conf")
-    if any(f"stage.experiment={stage}" in args for stage in ("selector", "certify", "clean")):
+    stage = next((arg.split("=", 1)[1] for arg in args if arg.startswith("stage.experiment=")), None)
+    if stage in (*FOLD_STAGES, "classify"):
         cfg = compose_cfg("lion.certification", args, config_dir=config_dir, config_name="certification")
+        if stage in ("clean", "classify") and not certify.gate_passed(cfg):
+            print("Held-out gate failed. Skipping cleaned features and classifier comparison.", flush=True)
+            return 0
         groups = cfg.runtime.selector_cpu_groups
-        if groups is not None and cfg.stage.fold is None:
+        if stage in FOLD_STAGES and groups is not None and cfg.stage.fold is None:
             if cfg.runtime.device != "cpu":
                 raise ValueError("CPU fold groups require runtime=cpu.")
             partitions = list(zip(("g1", "g2"), groups, strict=True))
@@ -96,8 +106,8 @@ def run_stage(args):
             ]
             codes = [worker.wait() for worker in workers]
             status = next((code for code in codes if code), 0)
-            if not status and cfg.stage.experiment == "certify":
-                certify.merge_tables(cfg)
+            if not status and stage in ("calibrate", "certify"):
+                (calibrate if stage == "calibrate" else certify).merge_tables(cfg)
             return status
     return run("lion.certification", args, main_module="run", config_dir=config_dir, config_name="certification")
 
@@ -114,3 +124,8 @@ if __name__ == "__main__":
             code = run_stage(args)
             if code:
                 raise SystemExit(code)
+            if stage == "certify":
+                cfg = compose_cfg("lion.certification", args, config_dir=str(ROOT / "conf"), config_name="certification")
+                if not certify.gate_passed(cfg):
+                    print("Held-out gate failed. Stopping before downstream classifier training.", flush=True)
+                    break

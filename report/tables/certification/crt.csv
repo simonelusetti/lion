@@ -1,0 +1,5 @@
+dataset,task,selector,held_out,group_unit,test,eligible_rows,complete_rows,pooled_rows,proposals,mask_acceptance,mlm_top1_error,mlm_nll,mlm_entropy,p,effect
+conll2003,ner,g1,g2,sentence,sufficiency,255,255,256,12755,1.0,0.8106169104576111,5.734722137451172,4.459296226501465,0.0196078431372549,0.567619503701559
+conll2003,ner,g1,g2,sentence,minimality,0,0,0,0,,,,,,
+conll2003,ner,g2,g1,sentence,sufficiency,256,256,256,12805,1.0,0.8085014820098877,5.693052291870117,4.522761344909668,0.0196078431372549,0.4936043043719752
+conll2003,ner,g2,g1,sentence,minimality,0,0,0,0,,,,,,

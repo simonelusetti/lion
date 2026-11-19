@@ -11,3 +11,5 @@ Each batch retains its implementation, results, protocol and supporting tables/f
 - [Batch 4: document context](04_document_context/README.md)
 
 - [Batch 5: mask pilot](05_mask_pilot/README.md)
+
+- [Batch 6 — fixed-offset conditional randomization tests](06_fixed_offset_crt/README.md)

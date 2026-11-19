@@ -1,12 +1,13 @@
 """Requested raw-array summaries and factual CRT results, without extra arms."""
 import csv,json,math,shutil,time
+from os.path import relpath
 import torch
 from ..diagnostics.common import ROOT,save_json,write_csv
 from .data import paths,TASKS
 
 
 def experiment(cfg,output):
-    results,_=paths(cfg);tables=ROOT/'report'/'tables'/'crt';tables.mkdir(parents=True,exist_ok=True)
+    results,_=paths(cfg);tables=output/'tables'/'crt';tables.mkdir(parents=True,exist_ok=True)
     records=[];terciles=[];histograms=[]
     for file in sorted((results/'test'/'all').glob('*.pt')):
         data=torch.load(file,weights_only=False);n=len(data['row']);offsets=data['offsets']
@@ -34,7 +35,7 @@ def experiment(cfg,output):
     for name,rows in [('summary',records),('entropy_terciles',terciles),('null_histograms',histograms)]:write_csv(output/(name+'.csv'),rows);shutil.copy2(output/(name+'.csv'),tables/(name+'.csv'))
     for file in [results/'prepare'/'samples.csv',results/'train'/'dev.json',results/'budget.json',results/'benchmark.json']:
         shutil.copy2(file,tables/file.name)
-    histogram_figure(histograms,ROOT/'report'/'figures'/'crt')
+    histogram_figure(histograms,output/'figures'/'crt')
     timing=json.loads((results/'timing.json').read_text());timing['ended_unix']=time.time();timing['wall_clock_seconds']=timing['ended_unix']-timing['started_unix'];save_json(results/'timing.json',timing);shutil.copy2(results/'timing.json',tables/'timing.json')
     dev=json.loads((results/'train'/'dev.json').read_text());budget=json.loads((results/'budget.json').read_text())
     lines=['# Experiment 6: conditional randomization tests','',f"Wall-clock: **{timing['wall_clock_seconds']/3600:.2f} hours**. **{budget['selected_rows']}/{budget['available_rows']} sentence rows**, K={cfg.crt.draws}; {budget['halvings']} row-budget halvings. The measured 1% benchmark and projection are in benchmark.json and budget.json.",'','One fp16 bert-base-cased backbone and its own pretrained MLM head supply both representations and samples. Three independent seed-0 MLPs use every eligible training word’s ±16-subword window, with CLS/SEP. Training uses a fixed ten epochs; dev accuracy covers all eligible dev words and does not select the scorer, since dev rows enter the CRT.','','| Task | Dev accuracy | Dev macro-F1 | Epoch |','|---|---:|---:|---:|']
@@ -63,8 +64,11 @@ def experiment(cfg,output):
     for task in ('upos','deprel'):
         values=[r for r in singles if r['task']==task];largest=max(values,key=lambda r:r['delta'])
         lines.append(f"\n{task}: the largest measured single-offset mean CRT effect is {largest['delta']:+.4f} at d={largest['offsets']}; {sum(r['p']<=.05 for r in values)}/10 aggregate tests have p≤.05.")
-    lines+=['','## Implementation and raw data','','[Implementation](IMPLEMENTATION_6.md). Raw arrays are under `results/crt/test/all/*.pt`: original/resampled/masked statistics for all three tasks, token draws, conditional entropy, sentence-row IDs and original replacement tokens. `results/crt/test/baseline.pt` retains the original rows and their sentence/document metadata. Report-stage files retain per-row p-values and effects.','','The three arms share identical encoder work and randomizations. Identical sampled windows are scored once and expanded back to all K draws; unchanged replacements copy the original score exactly to preserve ties. No top-k, top-p or temperature change is used. Joint sampling follows the requested two-mask/first-fill chain and batches each distinct first value once per row. No additional arms, datasets, encoders, sweeps or seed repetitions were added. Binomial SEs use sentence rows; source sentences may share documents. Finite-sample CRT validity requires the sampling conditional to match the data conditional; the reported calibration numbers do not assume this equality. No multiplicity correction was applied to these requested diagnostic p-values.']
-    (ROOT/'report'/'RESULTS_6.md').write_text('\n'.join(lines)+'\n');return {'report':str(ROOT/'report'/'RESULTS_6.md'),'wall_clock_seconds':timing['wall_clock_seconds']}
+    implementation = relpath(ROOT/'lion'/'crt'/'IMPLEMENTATION.md', output)
+    lines+=['','## Implementation and raw data','',f'[Implementation]({implementation}). Raw arrays are under `results/crt/test/all/*.pt`: original/resampled/masked statistics for all three tasks, token draws, conditional entropy, sentence-row IDs and original replacement tokens. `results/crt/test/baseline.pt` retains the original rows and their sentence/document metadata. Report-stage files retain per-row p-values and effects.','','The three arms share identical encoder work and randomizations. Identical sampled windows are scored once and expanded back to all K draws; unchanged replacements copy the original score exactly to preserve ties. No top-k, top-p or temperature change is used. Joint sampling follows the requested two-mask/first-fill chain and batches each distinct first value once per row. No additional arms, datasets, encoders, sweeps or seed repetitions were added. Binomial SEs use sentence rows; source sentences may share documents. Finite-sample CRT validity requires the sampling conditional to match the data conditional; the reported calibration numbers do not assume this equality. No multiplicity correction was applied to these requested diagnostic p-values.']
+    report = output/'RESULTS_6.md'
+    report.write_text('\n'.join(lines)+'\n')
+    return {'report':str(report),'wall_clock_seconds':timing['wall_clock_seconds']}
 
 
 def histogram_figure(rows,folder):

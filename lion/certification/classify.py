@@ -1,4 +1,4 @@
-"""Train on cross-fitted accepted fills and evaluate both classifiers on raw text."""
+"""Cache calibrated word features and evaluate paired readouts on raw text."""
 import time
 
 import torch
@@ -9,100 +9,72 @@ from ..encoder import load_masked_encoder as masked_encoder
 from ..labels import LABELS
 from ..metrics import shared_label
 from ..partition.train import fit, load_model, metric_vectors, predict
-from ..runtime import autocast, parallel
-from .certify import accepted_draws
-from .data import context, full_features, load, loader, ner_transfer_sets, paths, readout_data, task_names, unique_queries
-from .selector import chunk_size, focal_batches, load_selector
+from ..runtime import parallel
+from .data import full_features, load, loader, ner_transfer_sets, paths, readout_data, task_names, word_to_pieces
+from .selector import (batch_scores, draw_features, focal_batches, independent_fills, kept_words, label_groups,
+                       load_selector, predicted_group, ranks, raw_rows, scorer_log_probs, word_budget)
 
 
 @torch.no_grad()
-def clean_fold(encoder, selector, rows, cached, task, special, cfg):
-    device = cfg.runtime.device
-    rng = torch.Generator(device=device).manual_seed(cfg.seed + 1)
-    features, tokens, lengths, focals, labels, sentences = [], [], [], [], [], []
+def clean_fold(encoder, selector, scorer, rows, fractions, outside, task, special, cfg):
+    rng = torch.Generator(device=cfg.runtime.device).manual_seed(cfg.seed + 1)
+    draws = cfg.certification.cleaning_draws
     total = sum(int((row["gold"][task] >= 0).sum()) for row in rows)
-    written = reused = proposals = 0
+    features, labels, sentences, focals = [], [], [], []
+    written = altered = masked_words = 0
     started = time.monotonic()
-    measured = False
-    for ids, attention, hidden, focal, owner, sentence, gold, _ in focal_batches(encoder, loader(rows, cfg), cfg):
-        labeled = (gold[task] >= 0).nonzero().flatten()
-        if not len(labeled):
-            continue
-        ids, attention, focal, owner = (value[labeled] for value in (ids, attention, focal, owner))
-        sentence = sentence[labeled.cpu()]
-        y = gold[task][labeled].cpu()
-        eligible = context(attention, focal)
-        keep = selector.mask(hidden, focal, eligible, owner=owner)
-        drop = eligible & ~keep
-        cleaned = ids.clone()
-        saved = [cached.get((sid, position)) for sid, position in zip(sentence.tolist(), focal.tolist())]
-        needed = drop.any(-1)
-        for row, fill in enumerate(saved):
-            if fill is not None:
-                cleaned[row, :len(fill)] = fill.to(device)
-                needed[row] = False
-                reused += 1
-        needed = needed.nonzero().flatten()
-        if len(needed):
-            accepted, found, _, attempts = accepted_draws(
-                encoder, selector, ids[needed], attention[needed], focal[needed], keep[needed], drop[needed],
-                special, cfg, rng, draws=1,
-            )
-            proposals += int(attempts.sum())
-            if (found == 0).any():
-                missed = sentence[needed[found == 0].cpu()].tolist()
-                raise RuntimeError(f"No same-mask fill after {cfg.certification.max_proposals} proposals "
-                                   f"for {task} sentence IDs {missed}.")
-            cleaned[needed] = accepted[:, 0]
-        values = hidden[owner, focal].clone()
-        changed = (cleaned != ids).any(-1).nonzero().flatten()
-        if len(changed):
-            inputs, valid, positions, inverse = unique_queries(cleaned[changed], attention[changed], focal[changed])
-            size = chunk_size(ids, cfg)
-            with autocast(cfg):
-                encoded = torch.cat([encoder(*batch)["features"] for batch in
-                                     zip(inputs.split(size), valid.split(size), positions.split(size))])
-            values[changed] = encoded[inverse]
-        features.append(values.cpu().half())
-        tokens.append(cleaned[attention].cpu())
-        lengths.append(attention.sum(-1).cpu())
+    for batch in focal_batches(loader(rows, cfg), task, cfg):
+        ids, attention, word_ids, focal, y = (batch[key] for key in
+            ("ids", "attention", "word_ids", "focal", "gold"))
+        raw = batch["hidden"][batch["owner"], focal]
+        group = predicted_group(scorer_log_probs(scorer, raw, cfg), outside)
+        score, eligible = batch_scores(selector, batch)
+        budgets = word_budget(fractions[group], eligible.sum(-1))
+        keep = kept_words(ranks(score, eligible), eligible, budgets)
+        drop = word_to_pieces(~keep, word_ids, False)
+        fills = independent_fills(encoder, ids, attention, drop, draws, special, cfg, rng)
+        values = draw_features(encoder, ids, attention, word_ids, focal, fills, cfg, raw=raw)
+        features.append(values.cpu())
+        labels.append(y.cpu())
+        sentences.append(batch["sentence"])
         focals.append(focal.cpu())
-        labels.append(y)
-        sentences.append(sentence)
-        written += len(labeled)
-        if not measured and written >= min(256, total):
+        altered += int(drop.any(-1).sum())
+        masked_words += int((~keep).sum())
+        previous, written = written, written + len(y)
+        if previous < min(256, total) <= written:
             elapsed = time.monotonic() - started
-            print(f"{task}: cleaned {written}/{total} focals in {elapsed:.1f}s. "
+            print(f"{task}: cached {written}/{total} word focals in {elapsed:.1f}s. "
                   f"Projected fold time {elapsed * total / written / 3600:.2f}h.", flush=True)
-            measured = True
-    return {"features": torch.cat(features)[:, None], "y": torch.cat(labels), "sentence": torch.cat(sentences),
-            "ids": torch.cat(tokens), "lengths": torch.cat(lengths), "focal": torch.cat(focals),
-            "reused_fills": reused, "proposals": proposals, "seconds": time.monotonic() - started}
+    return {"features": torch.cat(features), "y": torch.cat(labels), "sentence": torch.cat(sentences),
+            "focal": torch.cat(focals), "focals_with_drops": altered,
+            "dropped_words": masked_words, "seconds": time.monotonic() - started}
 
 
 def clean(cfg, output):
     bank = load(cfg)
+    raw = raw_rows(cfg, bank)
     encoder = masked_encoder(cfg)
     pairs = (("g1", "g2"), ("g2", "g1"))
     total = 0
     for task in task_names(cfg):
+        _, outside = label_groups(bank["labels"][task])
+        scorer = load_model(paths(cfg) / "scorer" / task, cfg)
         folder = output / task
         folder.mkdir(parents=True, exist_ok=True)
         for fold, opposite in pairs:
             if cfg.stage.fold not in (None, fold):
                 continue
             selector = load_selector(cfg, task, fold)
-            tested = torch.load(paths(cfg) / "certify" / task / f"{fold}.pt", weights_only=False)
-            fills = {(row["sentence"], int(row["focals"][0])): fill
-                     for row, fill in zip(tested["rows"], tested["first_fills"]) if fill is not None}
-            rows = [row for row in bank["sets"]["train"] if row["fold"] == opposite]
-            print(f"Cleaning {task}/{opposite} with {fold}. Reusing {len(fills)} certification fills.", flush=True)
-            cleaned = clean_fold(encoder, selector, rows, fills, task, bank["special"], cfg)
+            saved = torch.load(paths(cfg) / "calibrate" / task / f"{fold}.pt", weights_only=False)
+            fractions = torch.tensor(saved["fractions"], device=cfg.runtime.device, dtype=torch.float64)
+            rows = [row for row in raw if row["fold"] == opposite]
+            print(f"Caching {cfg.certification.cleaning_draws} draws per word for {task}/{opposite} with {fold}", flush=True)
+            cleaned = clean_fold(encoder, selector, scorer, rows, fractions, outside, task, bank["special"], cfg)
             torch.save(cleaned, folder / f"{fold}.pt")
             count = len(cleaned["y"])
             total += count
-            save_json(folder / f"{fold}_timing.json", {"focals": count, **{
-                key: cleaned[key] for key in ("reused_fills", "proposals", "seconds")
+            save_json(folder / f"{fold}_timing.json", {"focals": count, "draws": cfg.certification.cleaning_draws, **{
+                key: cleaned[key] for key in ("focals_with_drops", "dropped_words", "seconds")
             }})
     return {"cleaned_focals": total}
 
@@ -170,7 +142,7 @@ def evaluate(logits, data, source, target, source_labels, space):
 
 def experiment(cfg, output):
     bank = load(cfg)
-    full = torch.load(paths(cfg) / "scorer" / "full_features.pt", weights_only=False)
+    full = torch.load(paths(cfg) / "scorer" / "full_features.pt", weights_only=False, mmap=True)
     encoder = masked_encoder(cfg)
     sets = bank["sets"]
     native_train = sets["train"]
@@ -183,16 +155,18 @@ def experiment(cfg, output):
         sets.update(transfer)
         bank["domains"].update(domains)
         write_csv(output / "target_coverage.csv", coverage)
-    full.update(full_features(encoder, {name: rows for name, rows in sets.items() if name not in full}, cfg))
+    full.update(full_features(encoder, {name: rows for name, rows in sets.items() if name not in full}, cfg, dtype=torch.float32))
     for task in task_names(cfg):
         labels = bank["labels"][task]
         cleaned, matched = [], []
         for fold, opposite in (("g1", "g2"), ("g2", "g1")):
             selected = torch.tensor([row["fold"] == opposite for row in native_train])
             rows = [row for row, include in zip(native_train, selected) if include]
-            accepted = torch.load(paths(cfg) / "clean" / task / f"{fold}.pt", weights_only=False)
+            accepted = torch.load(paths(cfg) / "clean" / task / f"{fold}.pt", weights_only=False, mmap=True)
             raw = readout_data(rows, full["train"][selected.repeat_interleave(words)], task)
-            if not torch.equal(accepted["y"], raw["y"]) or not torch.equal(accepted["sentence"], raw["sentence"]):
+            focals = torch.cat([row["focals"][row["gold"][task] >= 0] for row in rows])
+            if (not torch.equal(accepted["y"], raw["y"]) or not torch.equal(accepted["sentence"], raw["sentence"])
+                    or not torch.equal(accepted["focal"], focals)):
                 raise ValueError(f"Cleaned and raw training examples are misaligned for {task}/{fold}.")
             cleaned.append({key: accepted[key] for key in ("features", "y", "sentence")})
             matched.append(raw)
@@ -202,7 +176,7 @@ def experiment(cfg, output):
         task_path = output / task
         names = ("cleaned", "full_matched")
         paired = {
-            "train": {**training, "views": (training["features"], raw_training["features"])},
+            "train": {**training, "views": (training["features"][:, None], raw_training["features"])},
             "validation": {**validation, "views": (validation["features"], validation["features"])},
         }
         readout, _ = fit(paired, len(labels), cfg, cfg.seed, task_path, condition_outputs=tuple(

@@ -12,9 +12,10 @@ from ..runtime import autocast, parallel
 
 
 class Sentences(Dataset):
-    def __init__(self, data, views=None):
+    def __init__(self, data, views=None, sample_draws=False):
         self.data = data
         self.views = views
+        self.sample_draws = sample_draws
         self.order = data["sentence"].argsort(stable=True)
         _, counts = data["sentence"][self.order].unique_consecutive(return_counts=True)
         self.offsets = torch.cat([torch.zeros(1, dtype=torch.long), counts.cumsum(0)])
@@ -25,7 +26,20 @@ class Sentences(Dataset):
     def __getitem__(self, index):
         a, b = self.offsets[index:index + 2].tolist()
         ids = self.order[a:b]
-        features = self.data["features"][ids] if self.views is None else torch.cat([view[ids] for view in self.views], dim=1)
+        if self.views is None:
+            features = self.data["features"][ids]
+        else:
+            gathered = []
+            for view in self.views:
+                selected = view[ids]
+                if view.ndim == 4:
+                    # Optional cached draws are stored as [word, condition, draw, feature].
+                    if self.sample_draws:
+                        index = torch.randint(view.shape[2], selected.shape[:2])
+                        selected = selected.gather(2, index[..., None, None].expand(-1, -1, 1, view.shape[-1]))
+                    selected = selected[:, :, 0]
+                gathered.append(selected)
+            features = torch.cat(gathered, dim=1)
         return {"x": features.float(), "y": self.data["y"][ids], "index": ids}
 
 
@@ -36,7 +50,7 @@ def collate(rows):
 def loader(data, cfg, train=False, views=None):
     if views is None:
         views = data.get("views")
-    return DataLoader(Sentences(data, views), collate_fn=collate,
+    return DataLoader(Sentences(data, views, sample_draws=train), collate_fn=collate,
                       batch_size=cfg.train.batch_size if train else cfg.runtime.batch_size,
                       shuffle=train and cfg.train.shuffle, num_workers=cfg.runtime.workers,
                       pin_memory=cfg.runtime.device.startswith("cuda"))

@@ -1,6 +1,6 @@
 # Experiment 6: conditional randomization of context
 
-[Code](../lion/crt/), [Hydra config](../conf/crt/default.yaml). Exactly three arms: synthetic labels, EWT UPOS/deprel, and the four adjacent pairs, all with one bert-base-cased backbone and its own pretrained MLM head. No extra datasets, encoders, ablations, λ grids or classifier-seed repetitions.
+[Code](../../../lion/crt/), [Hydra config](../../../conf/crt/default.yaml). Exactly three arms: synthetic labels, EWT UPOS/deprel, and the four adjacent pairs, all with one bert-base-cased backbone and its own pretrained MLM head. No extra datasets, encoders, ablations, λ grids or classifier-seed repetitions.
 
 **Population/scorers.** Tokenize raw EWT without truncation or added specials, preserving word-to-subword alignment. Eligible focals are words represented by exactly one subword. All eligible native-training words train three independent MLPs (768→256→labels, ReLU, dropout .1, AdamW lr .001 / decay .01 / clipping 1, seed 0). For each focal, encode its clipped ±16-subword window with CLS/SEP, at most 35 positions, using final-layer focal vectors. Cached vectors are fp16; inexpensive readouts train and produce log-probabilities in float32. Fix training at ten epochs, with no dev-based checkpoint selection because dev enters the CRT. Report accuracy on all eligible dev words.
 

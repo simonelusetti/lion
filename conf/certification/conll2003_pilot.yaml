@@ -1,0 +1,11 @@
+defaults:
+  - default
+  - _self_
+
+results: results/certification/word-rank-conll2003-pilot
+source: conll2003
+ner_targets: [wnut, wikiann]
+train_sentence_cap: 3000
+selector_train_focals_per_fold: 1024
+test_documents: 80
+test_budget_seconds: 1800

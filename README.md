@@ -312,12 +312,12 @@ The full product is in `grids/pilot_cells.yaml`; the default runner batches its 
 .venv/bin/python -B -m lion.certification.run
 ```
 
-The default experiment trains HardKuma selectors on EWT UPOS and dependency labels,
-then cleans the opposite training folds with accepted same-mask MLM fills.
-The cleaned and original classifiers are evaluated on raw EWT and GUM sentences.
-The run reports sufficiency and minimality CRTs and both held-out cross-entropy bounds.
-The [protocol](lion/certification/IMPLEMENTATION.md)
-describes the baselines, sampling, and result files.
+The default experiment trains word-ranking selectors on EWT UPOS and dependency
+labels and calibrates how many words to keep. Passing the held-out CRT and
+cross-entropy gate triggers opposite-fold cleaning and a comparison with a
+matched raw-text baseline. Both classifiers evaluate raw EWT and GUM sentences.
+The [protocol](lion/certification/IMPLEMENTATION.md) describes the sampling,
+calibration, gate, and result files.
 
 Run all eight source/task configurations with a two-hour timing reference:
 

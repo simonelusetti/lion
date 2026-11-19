@@ -1,0 +1,8 @@
+split,dataset,sentences,documents,words,ner_labeled
+train,conll2003,14041,14041,272595,272595
+validation,conll2003,3250,3250,51362,51362
+id,conll2003,3453,3453,46435,46435
+scorer_validation,,702,702,13706,
+scorer_train,,2808,2808,54788,
+g1,,5265,5265,101849,
+g2,,5266,5266,102252,
