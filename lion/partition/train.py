@@ -12,8 +12,9 @@ from ..runtime import autocast, parallel
 
 
 class Sentences(Dataset):
-    def __init__(self, data):
+    def __init__(self, data, views=None):
         self.data = data
+        self.views = views
         self.order = data["sentence"].argsort(stable=True)
         _, counts = data["sentence"][self.order].unique_consecutive(return_counts=True)
         self.offsets = torch.cat([torch.zeros(1, dtype=torch.long), counts.cumsum(0)])
@@ -24,15 +25,18 @@ class Sentences(Dataset):
     def __getitem__(self, index):
         a, b = self.offsets[index:index + 2].tolist()
         ids = self.order[a:b]
-        return {"x": self.data["features"][ids].float(), "y": self.data["y"][ids], "index": ids}
+        features = self.data["features"][ids] if self.views is None else torch.cat([view[ids] for view in self.views], dim=1)
+        return {"x": features.float(), "y": self.data["y"][ids], "index": ids}
 
 
 def collate(rows):
     return {key: torch.cat([row[key] for row in rows]) for key in rows[0]}
 
 
-def loader(data, cfg, train=False):
-    return DataLoader(Sentences(data), collate_fn=collate,
+def loader(data, cfg, train=False, views=None):
+    if views is None:
+        views = data.get("views")
+    return DataLoader(Sentences(data, views), collate_fn=collate,
                       batch_size=cfg.train.batch_size if train else cfg.runtime.batch_size,
                       shuffle=train and cfg.train.shuffle, num_workers=cfg.runtime.workers,
                       pin_memory=cfg.runtime.device.startswith("cuda"))
@@ -53,10 +57,10 @@ def metric_vectors(logits, target, labels):
 
 
 @torch.no_grad()
-def predict(model, data, cfg):
+def predict(model, data, cfg, views=None):
     model.eval()
     output = None
-    for batch in loader(data, cfg):
+    for batch in loader(data, cfg, views=views):
         with autocast(cfg):
             logits = model(batch["x"].to(cfg.runtime.device))
         if output is None:
@@ -65,11 +69,20 @@ def predict(model, data, cfg):
     return output
 
 
-def fit(data, labels, cfg, seed, output, linear=False, balanced=False, mixture=False):
+def save_fit(output, checkpoint, predictions, history):
+    output.mkdir(parents=True, exist_ok=True)
+    torch.save(checkpoint, output / "model.pt")
+    torch.save(predictions, output / "predictions.pt")
+    write_csv(output / "history.csv", history)
+
+
+def fit(data, labels, cfg, seed, output, linear=False, balanced=False, mixture=False, condition_outputs=None):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(seed)
     conditions, dimension = data["train"]["features"].shape[1:]
+    if "views" in data["train"]:
+        conditions = sum(view.shape[1] for view in data["train"]["views"])
     heads = 1 if mixture else conditions
     tagger = OmegaConf.create({"name": "linear"}) if linear else cfg.tagger
     core = IndependentReadouts(tagger, dimension, labels, heads).to(cfg.runtime.device)
@@ -116,12 +129,22 @@ def fit(data, labels, cfg, seed, output, linear=False, balanced=False, mixture=F
             history.append({"epoch": epoch, "condition": condition,
                             **{k: float(v[condition]) for k, v in validation.items()}})
     core.load_state_dict(selected)
-    torch.save({"state": selected, "labels": labels, "dimension": dimension, "heads": heads,
-                "linear": linear, "mixture": mixture, "epoch": best_epoch,
-                "validation_score": best, "seed": seed}, output / "model.pt")
+    saved = {"state": selected, "labels": labels, "dimension": dimension, "heads": heads,
+             "linear": linear, "mixture": mixture, "epoch": best_epoch,
+             "validation_score": best, "seed": seed}
     predictions = {split: predict(model, part, cfg) for split, part in data.items()}
-    torch.save(predictions, output / "predictions.pt")
-    write_csv(output / "history.csv", history)
+    if condition_outputs is None:
+        save_fit(output, saved, predictions, history)
+    else:
+        for index, (path, validation_rows) in enumerate(condition_outputs):
+            head = slice(index, index + 1)
+            checkpoint = {**saved, "heads": 1, "epoch": best_epoch[head].clone(),
+                          "validation_score": best[head].clone(),
+                          "state": {key: value[head].clone() for key, value in selected.items()}}
+            views = {name: (value[:validation_rows] if name == "validation" else value)[:, head].clone()
+                     for name, value in predictions.items()}
+            records = [{**row, "condition": 0} for row in history if row["condition"] == index]
+            save_fit(path, checkpoint, views, records)
     return core.eval(), predictions
 
 

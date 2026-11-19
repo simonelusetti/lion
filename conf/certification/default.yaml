@@ -1,0 +1,24 @@
+results: results/certification
+source: en_ewt
+target: en_gum
+tasks: null
+ner_targets: [fewnerd, conll2003, wikiann, wnut]
+discourse_ood_genre: fiction
+timing_reference_seconds: 7200
+timing_chunks: 16
+scorer_fraction: 0.25
+scorer_validation_fraction: 0.20
+hidden: [128, 64]
+selector_epochs: 5
+selector_train_focals_per_fold: null
+selector_lr: 0.001
+size_penalty: 0.05
+training_draws: 4
+draws: 50
+max_proposals: 1024
+proposal_batch_size: 64
+test_batch_size: 8
+test_documents: 256
+test_budget_seconds: 10800
+gamma: 0.01
+alpha: 0.05

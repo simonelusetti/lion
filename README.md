@@ -305,3 +305,26 @@ Run the shared caches, frozen scorers, subset selection and independent rule × 
 ```
 
 The full product is in `grids/pilot_cells.yaml`; the default runner batches its 1,320 independent cells into 60 vectorized fits. Protocol and sampling choices are in `lion/pilot/IMPLEMENTATION.md`.
+
+## Cross-fitted context selector
+
+```bash
+.venv/bin/python -B -m lion.certification.run
+```
+
+The default experiment trains HardKuma selectors on EWT UPOS and dependency labels,
+then cleans the opposite training folds with accepted same-mask MLM fills.
+The cleaned and original classifiers are evaluated on raw EWT and GUM sentences.
+The run reports sufficiency and minimality CRTs and both held-out cross-entropy bounds.
+The [protocol](lion/certification/IMPLEMENTATION.md)
+describes the baselines, sampling, and result files.
+
+Run all eight source/task configurations with a two-hour timing reference:
+
+```bash
+python3 -B -m lion.certification.run --suite
+```
+
+The suite starts with WNUT, CoNLL-2003, WikiANN, and Few-NERD. Each NER source
+is evaluated in domain and on the other NER corpora. Check
+`results/certification/suite.csv` for each configuration's timing and status.

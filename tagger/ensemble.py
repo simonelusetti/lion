@@ -1,4 +1,6 @@
 """Independent linear/MLP readouts, vectorized over a condition axis."""
+from copy import deepcopy
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -37,3 +39,17 @@ def clip_heads(module, maximum):
     factor = (maximum / (norms + 1e-6)).clamp_max(1)
     for p in parameters:
         p.grad.mul_(factor.reshape(-1, *([1] * (p.ndim - 1))))
+
+
+def stack_readouts(models):
+    """Batch existing readouts, padding missing output classes out of the softmax."""
+    stacked = deepcopy(models[0]).eval()
+    parameters = [dict(model.named_parameters()) for model in models]
+    class_bias = "bias" if stacked.linear else "output_bias"
+    for name in parameters[0]:
+        values = [params[name].detach() for params in parameters]
+        width = max(value.shape[-1] for value in values)
+        value = torch.cat([F.pad(tensor, (0, width - tensor.shape[-1]),
+                                 value=-torch.inf if name == class_bias else 0) for tensor in values])
+        setattr(stacked, name, nn.Parameter(value, requires_grad=False))
+    return stacked

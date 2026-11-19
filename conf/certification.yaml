@@ -1,0 +1,13 @@
+defaults:
+  - config
+  - certification: default
+  - override stage: certification
+  - _self_
+
+train:
+  shuffle: true
+
+runtime:
+  selector_cpu_groups: null
+  selector_score_batch_size: null
+  crt_prefetch_max_positions: 2

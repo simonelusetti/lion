@@ -11,8 +11,8 @@ from ..datasets import UD_REPO
 from ..labels import LABELS
 from ..data import signature
 from ..diagnostics.common import absolute,save_json,write_csv
-from ..encoder import build_masked_encoder
-from ..runtime import autocast,parallel
+from ..encoder import load_masked_encoder as model
+from ..runtime import autocast
 
 TASKS=['synthetic','upos','deprel']
 CLASSES=[2,len(LABELS['ud_upos']),len(LABELS['ud_deprel'])]
@@ -77,11 +77,6 @@ def collate(items):
             'positions':torch.tensor([i['focal'] for i in items]),'index':torch.tensor([i['index'] for i in items])}
     if 'y' in items[0]:result['y']=torch.tensor([i['y'] for i in items]);result['sentence']=torch.tensor([i['sentence'] for i in items])
     return result
-
-
-def model(cfg):
-    dtype=torch.float16 if cfg.runtime.device.startswith('cuda') and cfg.runtime.amp=='fp16' else torch.float32
-    return parallel(build_masked_encoder(cfg.encoder).to(device=cfg.runtime.device,dtype=dtype).eval(),cfg)
 
 
 @torch.no_grad()

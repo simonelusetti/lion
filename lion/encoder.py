@@ -1,9 +1,32 @@
 """Frozen BERT with differentiable log-gate key masks and optional head contexts."""
+from contextvars import ContextVar
+
 import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from transformers import BertModel, BertForMaskedLM
+
+from .runtime import parallel
+
+
+_final_positions = ContextVar("bert_final_positions", default=None)
+
+
+def select_positions(hidden, positions):
+    if positions.dtype == torch.bool:
+        return hidden[positions]
+    rows = torch.arange(len(hidden), device=hidden.device)
+    return hidden[rows, positions] if positions.ndim == 1 else hidden[rows[:, None], positions]
+
+
+def select_final_attention(_module, _inputs, output):
+    positions = _final_positions.get()
+    if positions is None:
+        return output
+    if isinstance(output, tuple):
+        return (select_positions(output[0], positions), *output[1:])
+    return select_positions(output, positions)
 
 
 class FrozenBERT(nn.Module):
@@ -58,19 +81,44 @@ class FrozenMaskedBERT(nn.Module):
     def __init__(self,name):
         super().__init__()
         self.model=BertForMaskedLM.from_pretrained(name).eval().requires_grad_(False)
+        last_layer = self.model.bert.encoder.layer[-1]
+        self.select_before_feed_forward = last_layer.chunk_size_feed_forward == 0
+        if self.select_before_feed_forward:
+            # All mixing between tokens has finished before the last pointwise feed-forward block.
+            last_layer.attention.register_forward_hook(select_final_attention)
 
     def train(self,mode=True):
         super().train(False)
         return self
 
-    def forward(self,ids,attention_mask,positions,mlm=False):
-        h=self.model.bert(input_ids=ids,attention_mask=attention_mask,return_dict=False)[0]
-        selected=h[torch.arange(len(h),device=h.device),positions]
-        return {'logits':self.model.cls(selected)} if mlm else {'features':selected}
+    def forward(self, ids, attention_mask, positions=None, mlm=False,
+                replacement_ids=None, gates=None):
+        if replacement_ids is None:
+            inputs = {"input_ids": ids}
+        else:
+            embeddings = self.model.bert.embeddings.word_embeddings
+            original = embeddings(ids)
+            mixed = torch.lerp(embeddings(replacement_ids), original, gates[..., None].to(original.dtype))
+            inputs = {"inputs_embeds": mixed}
+        request = _final_positions.set(positions if self.select_before_feed_forward else None)
+        try:
+            hidden = self.model.bert(**inputs, attention_mask=attention_mask, return_dict=False)[0]
+        finally:
+            _final_positions.reset(request)
+        if positions is not None and not self.select_before_feed_forward:
+            hidden = select_positions(hidden, positions)
+        return {"logits": self.model.cls(hidden)} if mlm else {"features": hidden}
 
 
 def build_masked_encoder(cfg):
     return {"bert":FrozenMaskedBERT}[cfg.family](cfg.name)
+
+
+def load_masked_encoder(cfg):
+    fp16 = cfg.runtime.device.startswith("cuda") and cfg.runtime.amp == "fp16"
+    dtype = torch.float16 if fp16 else torch.float32
+    encoder = build_masked_encoder(cfg.encoder).to(device=cfg.runtime.device, dtype=dtype).eval()
+    return parallel(encoder, cfg, frozen=True)
 
 
 def word_features(encoded, positions):
