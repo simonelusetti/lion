@@ -1,0 +1,8 @@
+defaults:
+  - sensitivity
+  - _self_
+sensitivity:
+  results: results/sensitivity_1b
+step1b:
+  original_results: results/sensitivity
+  minimum_ratio_rows: 50

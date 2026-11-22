@@ -1,0 +1,5 @@
+task,selector,held_out,group,rows,rho,calibration_sentences,test_sentences
+ner,g1,g2,O,3630,0.0,3686,1580
+ner,g1,g2,entity,2911,0.8,3686,1580
+ner,g2,g1,O,3637,0.0,3685,1580
+ner,g2,g1,entity,2880,0.85,3685,1580

@@ -1,0 +1,42 @@
+{
+  "dataset": "DFKI-SLT/few-nerd",
+  "config": "supervised",
+  "revision": "205f3e9c9f3577ea2561d43f2f62dc249ab92d5b",
+  "files": [
+    {
+      "split": "train",
+      "file": "supervised/train-00000-of-00001.parquet",
+      "sha256": "6ccb192b1accd3d1754db2244d18ddf64040357fb5b9076a338ec421a72d7d61",
+      "native_sentences": 131767
+    },
+    {
+      "split": "validation",
+      "file": "supervised/validation-00000-of-00001.parquet",
+      "sha256": "d502de918f2a6510179e64bc8b7cfff4e28999188e308f8b0fe75bd71844da66",
+      "native_sentences": 18824
+    },
+    {
+      "split": "test",
+      "file": "supervised/test-00000-of-00001.parquet",
+      "sha256": "b7ad746fcbeb68fcc235ba7142d7c3723ea2dc39930089e947284defecf300c6",
+      "native_sentences": 37648
+    }
+  ],
+  "sampling_seed": 0,
+  "source_sentences": 10531,
+  "classifier_sentences": 7898,
+  "validation_sampling": "round(10531 \u00d7 3250 / 14041); calibration 70% of opposite selector half, held-out 30%, unchanged",
+  "tagging": "Coarse IO converted to BIO: B on non-O type change/after O, I on continuation. Contiguous same-coarse-type entities merge because IO lacks boundaries; fine tags are not used.",
+  "discarded_words_due_to_512_piece_truncation_before_test_halving": {
+    "train": 0,
+    "validation": 0,
+    "id": 0
+  },
+  "test_target_words": 46435,
+  "test_words": 46435,
+  "test_gold_spans": 4823,
+  "seen_test_gold_spans": 1162,
+  "seen_same_type_test_gold_spans": 1080,
+  "seen_test_span_share": 0.2409288824383164,
+  "seen_same_type_test_span_share": 0.22392701637984658
+}

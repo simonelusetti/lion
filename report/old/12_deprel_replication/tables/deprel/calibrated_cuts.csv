@@ -1,0 +1,3 @@
+task,selector,held_out,group,rows,rho,calibration_sentences,test_sentences
+deprel,g1,g2,all,2460,0.75,2460,1054
+deprel,g2,g1,all,3090,0.65,3090,1324

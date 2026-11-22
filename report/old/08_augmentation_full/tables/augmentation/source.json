@@ -1,0 +1,6 @@
+{
+  "run": "/home/simonelusetti/lion/results/augmentation_full/source/28b4f1db440a",
+  "training": "g1 union g2; scorer_train and scorer_validation excluded",
+  "source_preset": "full CoNLL-2003",
+  "retrained_prerequisites": true
+}

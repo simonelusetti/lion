@@ -1,0 +1,32 @@
+{
+  "initial": {
+    "part1_seconds": 13977.464449186213,
+    "part2_seconds": 1025.929990733579,
+    "total_seconds": 15003.394439919792,
+    "part1_stages": {
+      "scorer": 18.815896669883138,
+      "selector": 12445.986567928187,
+      "calibrate": 1356.4027353027188,
+      "bounds": 58.68094844495811,
+      "baseline_and_features": 97.57830084046591
+    },
+    "training_cost_ratio": 1.6263050140077653,
+    "method": "CoNLL measured stage times \u00d7 sum_words(piece_length + piece_length\u00b2/768) ratio; Part 2 CoNLL generation 720 s + 60 s inference/analysis. Same GPU throughput assumed; allow roughly \u00b150%."
+  },
+  "used": {
+    "part1_seconds": 13977.464449186213,
+    "part2_seconds": 1025.929990733579,
+    "total_seconds": 15003.394439919792,
+    "part1_stages": {
+      "scorer": 18.815896669883138,
+      "selector": 12445.986567928187,
+      "calibrate": 1356.4027353027188,
+      "bounds": 58.68094844495811,
+      "baseline_and_features": 97.57830084046591
+    },
+    "training_cost_ratio": 1.6263050140077653,
+    "method": "CoNLL measured stage times \u00d7 sum_words(piece_length + piece_length\u00b2/768) ratio; Part 2 CoNLL generation 720 s + 60 s inference/analysis. Same GPU throughput assumed; allow roughly \u00b150%."
+  },
+  "test_halved": false,
+  "test_target_words": 46435
+}

@@ -1,0 +1,6 @@
+source_config: results/augmentation_full/source/28b4f1db440a/config.yaml
+augmentation_run: results/augmentation_full/f3d6dc697455
+results: results/sensitivity
+seed: 20261121
+draws: 4
+resume: true

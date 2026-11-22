@@ -1,0 +1,35 @@
+defaults:
+  - augmentation
+  - _self_
+certification:
+  source: fewnerd
+  tasks: [ner]
+  ner_targets: []
+  train_sentence_cap: null
+  selector_train_focals_per_fold: null
+  test_documents: null
+  run_path: results/fewnerd_replication/source
+augmentation:
+  run_path: results/fewnerd_replication
+sensitivity:
+  results: results/fewnerd_replication
+  source_config: results/fewnerd_replication/source/config.yaml
+  augmentation_run: results/fewnerd_replication
+  adapter: lion.fewnerd_replication.data
+  seed: 20261121
+  draws: 4
+  gamma: 0.01
+  resume: true
+step1b:
+  original_results: results/sensitivity
+  minimum_ratio_rows: 50
+  classifiers: [baseline, scorer]
+replication:
+  training_sentences: 10531
+  test_words: 46435
+  seed: 0
+  revision: 205f3e9c9f3577ea2561d43f2f62dc249ab92d5b
+  runtime_budget_seconds: 21600
+  conll_source: results/augmentation_full/source/28b4f1db440a
+  conll_run: results/augmentation_full/f3d6dc697455
+  conll_analysis: results/sensitivity_1b/analyse

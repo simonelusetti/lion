@@ -1,0 +1,4 @@
+seed,fit_seconds_all_three_arms,training_and_evaluation_seconds,optimizer_steps_per_arm,labelled_token_presentations_per_arm,variant_token_share_augmented
+0,6.763027719222009,7.815360799897462,1650,1520680,0.5
+1,6.671046745032072,7.829657744150609,1650,1520680,0.5
+2,6.711473325267434,7.714869043789804,1650,1520680,0.5

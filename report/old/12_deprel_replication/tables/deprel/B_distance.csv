@@ -1,0 +1,3 @@
+dataset,group,mask,dropped_positions,mean,median,within_two,status
+en_ewt_deprel,all,selector,306665,10.873712357132376,8.0,0.16652047021994684,gate_passed
+en_ewt_deprel,all,random,306665,10.670999298909233,8.0,0.17266072098217924,gate_passed

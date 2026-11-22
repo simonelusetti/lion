@@ -1,0 +1,13 @@
+dataset,fraction,sentences,words
+conll2003,0.0625,878,12672
+conll2003,0.125,1756,25209
+conll2003,0.25,3511,50646
+conll2003,0.5,7021,101296
+conll2003,1.0,14041,203621
+conll2003,T1∪T2 (part A),10531,152068
+en_ewt_deprel,0.0625,784,12899
+en_ewt_deprel,0.125,1568,25831
+en_ewt_deprel,0.25,3136,51375
+en_ewt_deprel,0.5,6272,102273
+en_ewt_deprel,1.0,12544,204578
+en_ewt_deprel,T1∪T2 (part A),7928,129066

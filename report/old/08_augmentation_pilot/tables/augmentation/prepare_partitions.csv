@@ -1,0 +1,5 @@
+partition,sentences,words
+scorer_train,600,8236
+scorer_validation,150,2412
+g1,1125,16682
+g2,1125,16039

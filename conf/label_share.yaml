@@ -1,0 +1,22 @@
+defaults:
+  - config
+  - override stage: label_share
+  - _self_
+runtime:
+  batch_size: 16
+  workers: 0
+label_share:
+  results: results/label_share
+  coverage: results/coverage  # full native banks, word forms, and the full-data mixture heads (fraction 1.0)
+  datasets:
+    conll2003:
+      source_config: results/augmentation_full/source/28b4f1db440a/config.yaml
+      full_bank: null
+    en_ewt_deprel:
+      source_config: results/deprel_replication/source/config.yaml
+      full_bank: results/coverage/prepare/en_ewt_full
+  seeds: [0, 1, 2]
+  minimum_per_label: 10
+  shuffles: 20
+  random_pairs: 20000
+  top_types: 20

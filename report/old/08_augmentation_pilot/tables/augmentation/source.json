@@ -1,0 +1,6 @@
+{
+  "run": "/home/simonelusetti/lion/results/augmentation/source/b5ca455dbea8",
+  "training": "g1 union g2; scorer_train and scorer_validation excluded",
+  "source_preset": "conll2003_pilot",
+  "retrained_prerequisites": true
+}

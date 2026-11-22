@@ -27,6 +27,7 @@ def task_names(cfg):
 
 
 def paths(cfg):
+    if cfg.certification.get('run_path') is not None:return absolute(cfg.certification.run_path)
     certification = OmegaConf.to_container(cfg.certification, resolve=True)
     for key in ("train_sentence_cap", "selector_train_focals_per_fold"):
         if certification.get(key) is None:
@@ -50,12 +51,13 @@ def ud_rows(cfg, tokenizer, labels):
     else:
         sources = [(name, source, split) for name, split in
                    (("train", "train"), ("validation", "dev"), ("id", "test"))]
-        sources.append(("ood", cfg.certification.target, "test"))
+        if cfg.certification.get('include_ood', True):sources.append(("ood", cfg.certification.target, "test"))
     lookup = {task: {name: i for i, name in enumerate(names)} for task, names in labels.items()}
     columns = ["tokens", "sent_id", "misc"] if discourse else ["tokens", "sent_id", *lookup]
     held_out = cfg.certification.discourse_ood_genre
     for name, treebank, split in sources:
-        path = hf_hub_download(UD_REPO, f"parquet/{treebank}/{split}.parquet", repo_type="dataset")
+        path = hf_hub_download(UD_REPO, f"parquet/{treebank}/{split}.parquet", repo_type="dataset",
+                               revision=cfg.certification.get('dataset_revision'))
         raw = pq.read_table(path, columns=columns).to_pylist()
         tokenized = tokenizer([row["tokens"] for row in raw], is_split_into_words=True,
                               add_special_tokens=True, truncation=True, max_length=cfg.encoder.max_length)

@@ -1,0 +1,11 @@
+defaults:
+  - config
+  - sensitivity: default
+  - override stage: sensitivity
+  - _self_
+runtime:
+  batch_size: 16
+  focal_chunk: 8
+  selector_score_batch_size: 8
+  mlm_position_budget: 256
+  workers: 0

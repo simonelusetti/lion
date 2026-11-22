@@ -1,0 +1,4 @@
+results: results/augmentation
+seeds: [0, 1, 2]
+generation_seed: 20261120
+resume: true

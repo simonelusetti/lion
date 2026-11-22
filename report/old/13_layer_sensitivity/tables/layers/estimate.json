@@ -1,0 +1,48 @@
+{
+  "datasets": {
+    "conll2003": {
+      "perturbed_sequences": 904374,
+      "perturbed_tokens": 27606306,
+      "feature_tokens": 369978,
+      "tokens_per_second": 254985.52572610375,
+      "seconds": {
+        "features": 2.176464716652684,
+        "train": 630.0,
+        "measure": 140.7460195938722,
+        "analyse": 120.0
+      },
+      "total_seconds": 892.922484310525
+    },
+    "en_ewt_deprel": {
+      "perturbed_sequences": 474000,
+      "perturbed_tokens": 13412643,
+      "feature_tokens": 240795,
+      "tokens_per_second": 266693.35262660455,
+      "seconds": {
+        "features": 1.354336343379743,
+        "train": 630.0,
+        "measure": 65.38009188557703,
+        "analyse": 120.0
+      },
+      "total_seconds": 816.7344282289567
+    }
+  },
+  "total_seconds": 1709.6569125394817,
+  "total_hours": 0.4749046979276338,
+  "restricted": false,
+  "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ]
+}

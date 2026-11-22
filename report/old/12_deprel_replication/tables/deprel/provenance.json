@@ -1,0 +1,67 @@
+{
+  "dataset": "universal-dependencies/universal_dependencies",
+  "treebank": "en_ewt",
+  "revision": "c3fed78df6b9f8cd27ed24cc7142e9eccf1e6703",
+  "files": [
+    {
+      "file": "parquet/en_ewt/train.parquet",
+      "sha256": "feefaccc97c41de6d9be224e465ed7ee64a6ad56d6945078666fc752a8bb6ade",
+      "native_sentences": 12544
+    },
+    {
+      "file": "parquet/en_ewt/dev.parquet",
+      "sha256": "a0cbda9f289decb33391e1f14d732ba404ed2110922a115f6df7833e4a5b7b6c",
+      "native_sentences": 2001
+    },
+    {
+      "file": "parquet/en_ewt/test.parquet",
+      "sha256": "1cd4c2459a720a7ace68360b465309567928a064ae1a724b11ab5c170b65cc10",
+      "native_sentences": 2077
+    }
+  ],
+  "sampling_seed": 0,
+  "labels": [
+    "acl",
+    "advcl",
+    "advmod",
+    "amod",
+    "appos",
+    "aux",
+    "case",
+    "cc",
+    "ccomp",
+    "compound",
+    "conj",
+    "cop",
+    "csubj",
+    "dep",
+    "det",
+    "discourse",
+    "dislocated",
+    "expl",
+    "fixed",
+    "flat",
+    "goeswith",
+    "iobj",
+    "list",
+    "mark",
+    "nmod",
+    "nsubj",
+    "nummod",
+    "obj",
+    "obl",
+    "orphan",
+    "parataxis",
+    "punct",
+    "reparandum",
+    "root",
+    "vocative",
+    "xcomp"
+  ],
+  "task": "Predict each word\u2019s base UD dependency relation from sentence text. No head positions are supplied or predicted; this is relation tagging, not dependency parsing.",
+  "label_mapping": "Strip colon subtypes, matching the existing certification deprel task. Include punctuation and root. No BIO/span metric.",
+  "roles": "Random source cap of 10531 sentences, followed by document-grouped A/T1/T2 split with unchanged 25% scorer fraction, 20% within-A scorer validation. All three baseline seeds use T1 union T2.",
+  "calibration": "Single all-token group; existing 70/30 sentence split of the opposite selector half; one random focal per sentence.",
+  "test": "Native EWT test, no duplication to reach NER word counts; halved only if projected total exceeds six hours.",
+  "seen": "Exact case-sensitive focal word seen in T1/T2, with or without the same base dependency label. Entity span analysis is inapplicable."
+}

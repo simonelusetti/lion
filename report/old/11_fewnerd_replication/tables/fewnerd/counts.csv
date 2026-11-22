@@ -1,0 +1,8 @@
+split,sentences,words
+train,10531,256451
+validation,2438,59504
+id,1870,46435
+scorer_train,2106,51282
+scorer_validation,527,13037
+g1,3949,95799
+g2,3949,96333

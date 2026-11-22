@@ -1,0 +1,23 @@
+defaults:
+  - fewnerd_replication
+  - _self_
+certification:
+  source: en_ewt
+  tasks: [deprel]
+  target: en_gum
+  train_sentence_cap: 10531
+  include_ood: false
+  dataset_revision: c3fed78df6b9f8cd27ed24cc7142e9eccf1e6703
+  run_path: results/deprel_replication/source
+augmentation:
+  run_path: results/deprel_replication
+sensitivity:
+  results: results/deprel_replication
+  source_config: results/deprel_replication/source/config.yaml
+  augmentation_run: results/deprel_replication
+  adapter: lion.deprel_replication.data
+step1b:
+  word_labels: true
+replication:
+  revision: c3fed78df6b9f8cd27ed24cc7142e9eccf1e6703
+  conll_comparison: false

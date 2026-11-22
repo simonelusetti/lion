@@ -1,0 +1,11 @@
+dataset,fraction,sentences,best_layer
+conll2003,0.0625,878,layer11
+conll2003,0.125,1756,layer9
+conll2003,0.25,3511,layer9
+conll2003,0.5,7021,layer8
+conll2003,1.0,14041,layer8
+en_ewt_deprel,0.0625,784,layer8
+en_ewt_deprel,0.125,1568,layer9
+en_ewt_deprel,0.25,3136,layer8
+en_ewt_deprel,0.5,6272,layer8
+en_ewt_deprel,1.0,12544,layer9

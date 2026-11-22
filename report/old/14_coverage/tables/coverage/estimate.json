@@ -1,0 +1,108 @@
+{
+  "datasets": {
+    "conll2003": {
+      "train_sentences": 14041,
+      "train_words": 203621,
+      "dev_words": 51362,
+      "seconds_per_step": {
+        "layer": 0.001533018813158075,
+        "mixture": 0.0017880614226063092
+      },
+      "seconds_per_dev_evaluation": {
+        "layer": 0.008746369586636623,
+        "mixture": 0.02754464962830146
+      },
+      "fractions": {
+        "0.0625": {
+          "sentences": 878,
+          "epochs_cap": 158,
+          "steps": 2212,
+          "seconds": 211.06733589060607
+        },
+        "0.125": {
+          "sentences": 1756,
+          "epochs_cap": 79,
+          "steps": 2212,
+          "seconds": 177.59168923227116
+        },
+        "0.25": {
+          "sentences": 3511,
+          "epochs_cap": 40,
+          "steps": 2200,
+          "seconds": 160.2839140687138
+        },
+        "0.5": {
+          "sentences": 7021,
+          "epochs_cap": 20,
+          "steps": 2200,
+          "seconds": 151.80906681343913
+        },
+        "1.0": {
+          "sentences": 14041,
+          "epochs_cap": 10,
+          "steps": 2200,
+          "seconds": 147.57164318580183
+        }
+      },
+      "features_seconds": 180.0,
+      "total_seconds": 1028.323649190832
+    },
+    "en_ewt_deprel": {
+      "train_sentences": 12544,
+      "train_words": 204578,
+      "dev_words": 25148,
+      "seconds_per_step": {
+        "layer": 0.001435402617789805,
+        "mixture": 0.0018763545822973052
+      },
+      "seconds_per_dev_evaluation": {
+        "layer": 0.004634606807182233,
+        "mixture": 0.014166756998747587
+      },
+      "fractions": {
+        "0.0625": {
+          "sentences": 784,
+          "epochs_cap": 151,
+          "steps": 1963,
+          "seconds": 154.65071075321174
+        },
+        "0.125": {
+          "sentences": 1568,
+          "epochs_cap": 79,
+          "steps": 1975,
+          "seconds": 139.3160325170029
+        },
+        "0.25": {
+          "sentences": 3136,
+          "epochs_cap": 40,
+          "steps": 1960,
+          "seconds": 129.68513850681484
+        },
+        "0.5": {
+          "sentences": 6272,
+          "epochs_cap": 20,
+          "steps": 1960,
+          "seconds": 125.22013977728784
+        },
+        "1.0": {
+          "sentences": 12544,
+          "epochs_cap": 10,
+          "steps": 1960,
+          "seconds": 122.98764041252433
+        }
+      },
+      "features_seconds": 180.0,
+      "total_seconds": 851.8596619668417
+    }
+  },
+  "total_seconds": 2180.1833111576734,
+  "total_hours": 0.605606475321576,
+  "dropped_smallest_fraction": false,
+  "fractions": [
+    0.0625,
+    0.125,
+    0.25,
+    0.5,
+    1.0
+  ]
+}

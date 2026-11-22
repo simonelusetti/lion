@@ -1,0 +1,3 @@
+defaults:
+  - default
+results: results/augmentation_full
