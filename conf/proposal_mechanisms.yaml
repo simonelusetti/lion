@@ -1,0 +1,12 @@
+defaults:
+  - fewnerd_full_grid
+  - _self_
+mechanisms:
+  results: results/proposal_mechanisms
+  sources: 4000
+  draws: 5
+  benchmark_sources: 128
+  tau: 0.7
+  refinement_rounds: 4
+  refinement_fraction: 0.25
+  full_seed: 20261126

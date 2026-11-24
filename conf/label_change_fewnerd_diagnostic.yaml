@@ -1,0 +1,12 @@
+defaults:
+  - label_change
+  - _self_
+certification:
+  source: fewnerd
+  tasks: [ner]
+  ner_targets: []
+  run_path: results/label_change_fewnerd_diagnostic/source
+augmentation:
+  run_path: results/label_change_fewnerd_diagnostic
+label_change:
+  results: results/label_change_fewnerd_diagnostic

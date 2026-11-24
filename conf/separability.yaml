@@ -1,0 +1,23 @@
+defaults:
+  - config
+  - override stage: separability
+  - _self_
+runtime:
+  batch_size: 16
+  workers: 0
+separability:
+  results: results/separability
+  coverage: results/coverage  # full native banks, word forms, full-data mixture heads (fraction 1.0)
+  datasets:
+    conll2003:
+      source_config: results/augmentation_full/source/28b4f1db440a/config.yaml
+      full_bank: null
+    en_ewt_deprel:
+      source_config: results/deprel_replication/source/config.yaml
+      full_bank: results/coverage/prepare/en_ewt_full
+  seeds: [0, 1, 2]
+  minimum_per_label: 10  # same eligibility as the label-share run
+  folds: 5  # stratified occurrence folds (per-word) and word-type folds (transfer)
+  l2: [0.001, 0.01, 0.1]
+  max_iterations: 200
+  top_types: 20

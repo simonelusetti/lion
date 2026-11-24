@@ -1,0 +1,16 @@
+defaults:
+  - augmentation
+  - _self_
+certification:
+  run_path: results/label_change/source
+augmentation:
+  run_path: results/label_change
+label_change:
+  results: results/label_change
+  source_bank: results/augmentation_full/source/28b4f1db440a
+  calibration_fraction: 0.2
+  calibration_draws: 4000
+  tau: 0.9
+  alpha: 0.05
+  desired_precision: 0.95
+  seed: 20261123

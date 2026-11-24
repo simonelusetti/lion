@@ -1,0 +1,43 @@
+{
+  "datasets": {
+    "conll2003": {
+      "slots": {
+        "train": 184409,
+        "validation": 46526,
+        "id": 41897
+      },
+      "timed_sequences": 2048,
+      "timed_seconds": 0.2359931101091206,
+      "tokens_per_second": 267651.88174685976,
+      "seconds": {
+        "context_features": 31.973703843015873,
+        "context_head": 45.0,
+        "supply": 4.767442663477448,
+        "room": 57.259440508976766,
+        "analysis_report": 60.0
+      },
+      "upper_estimate_seconds": 199.0005870154701
+    },
+    "en_ewt_deprel": {
+      "slots": {
+        "train": 204578,
+        "validation": 25148,
+        "id": 25094
+      },
+      "timed_sequences": 2048,
+      "timed_seconds": 0.2385979602113366,
+      "tokens_per_second": 268715.62499197625,
+      "seconds": {
+        "context_features": 28.75097791663842,
+        "context_head": 45.0,
+        "supply": 2.5428517601847798,
+        "room": 30.540092338303907,
+        "analysis_report": 60.0
+      },
+      "upper_estimate_seconds": 166.8339220151271
+    }
+  },
+  "upper_estimate_seconds": 365.8345090305972,
+  "minutes": 6.09724181717662,
+  "assumptions": "All test slots selected at tau=.9, five natural draws plus top three of each class. Full MLM forward timed for every query, including context-feature passes; CPU/I/O and fit/report allowance included. No sampling reduction."
+}

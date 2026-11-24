@@ -1,0 +1,10 @@
+defaults:
+  - proposal_mechanisms
+  - _self_
+mechanisms:
+  draws: 1
+  cache_accepted_features: true
+mechanism_pilot:
+  results: results/mechanism_training_pilot
+  sentences: 2400
+  subset_seed: 20261127

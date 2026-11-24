@@ -1,0 +1,7 @@
+{
+  "proposals": 34678,
+  "accepted": 89,
+  "acceptance_rate": 0.0025664686544783436,
+  "calibration_draws_per_quantity": 4000,
+  "calibration_reference": "IID with-replacement uniform focal draws from the same fixed held-out empirical corpus, independent error and acceptance streams. Bounds are conditional on that corpus, not a population-level generalization guarantee."
+}

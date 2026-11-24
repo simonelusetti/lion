@@ -1,0 +1,10 @@
+defaults:
+  - label_change
+  - _self_
+generators:
+  results: results/label_change_generators
+  windows: [nearby, sentence]
+  fractions: [0.2, 0.5, 0.7]
+  radius: 5
+  seed: 20261124
+  sample_per_generator: 10

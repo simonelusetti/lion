@@ -1,0 +1,19 @@
+defaults:
+  - proposal_mechanisms
+  - _self_
+runtime:
+  selector_score_batch_size: 64
+guided:
+  results: results/guided_refinement
+  arms: [uniform, lambda0.001, lambda0.01, lambda0.1, greedy]
+  main_arm: lambda0.01
+  completions: 8
+  rounds: 4
+  mask_fraction: 0.25
+  tau: 0.7
+  target_seed: 20261128
+  selection_seed: 20261129
+  bootstrap_seed: 20261130
+  bootstrap_draws: 2000
+  benchmark_sources: 64
+  benchmark_replicates: 1

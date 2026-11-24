@@ -31,3 +31,9 @@ Each batch retains its implementation, results, protocol and supporting tables/f
 - [Context sensitivity across encoder layers](13_layer_sensitivity/README.md)
 
 - [Is the layer gap a coverage effect?](14_coverage/README.md)
+
+- [Label-aligned share of contextual variation](15_label_share/README.md)
+
+- [Separability and alignment](16_separability/README.md)
+
+- [Conflict-insertion feasibility](17_conflict_feasibility/README.md)

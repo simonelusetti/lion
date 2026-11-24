@@ -1,0 +1,17 @@
+defaults:
+  - guided_refinement
+  - _self_
+mechanisms:
+  full_seed: 20261202
+guided:
+  target_seed: 20261203
+  selection_seed: 20261204
+  cache_accepted_features: true
+mechanism_pilot:
+  results: results/guided_training_pilot
+  sentences: 2400
+  subset_seed: 20261127
+  arms: [uniform, lambda0.001, lambda0.01, lambda0.1, greedy]
+guided_training:
+  anchors: 4000
+  anchor_seed: 20261201

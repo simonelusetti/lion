@@ -1,0 +1,7 @@
+seed,arm,rows,prediction_flip_rate,agreement_with_scorer_proposed_label
+0,baseline,14,0.21428571428571427,1.0
+0,augmented,14,0.21428571428571427,1.0
+1,baseline,14,0.21428571428571427,1.0
+1,augmented,14,0.21428571428571427,1.0
+2,baseline,14,0.21428571428571427,1.0
+2,augmented,14,0.21428571428571427,1.0

@@ -1,0 +1,8 @@
+defaults:
+  - guided_training_pilot
+  - _self_
+mechanism_pilot:
+  results: results/augmentation_size_grid
+  arms: [uniform, lambda0.001, lambda0.01, lambda0.1, greedy, nearby20, nearby50, nearby70, sentence20, sentence50, sentence70]
+guided_training:
+  anchors: 40000

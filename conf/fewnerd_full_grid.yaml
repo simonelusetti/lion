@@ -1,0 +1,32 @@
+defaults:
+  - label_change_grid
+  - _self_
+certification:
+  source: fewnerd
+  tasks: [ner]
+  ner_targets: [conll2003, wnut, wikiann]
+  train_sentence_cap: null
+  run_path: results/fewnerd_full_grid/source
+augmentation:
+  run_path: results/fewnerd_full_grid
+label_change:
+  results: results/fewnerd_full_grid
+  feature_dtype: float16
+runtime:
+  focal_chunk: 64
+  mlm_position_budget: 2048
+grid_pilot:
+  results: results/fewnerd_full_grid/grid
+  heldout_generators: results/fewnerd_full_grid/heldout_generators
+  evaluation_cache: results/fewnerd_full_grid/test_cache/evaluation.pt
+generators:
+  results: results/fewnerd_full_grid/heldout_generators
+  windows: [nearby]
+  fractions: [0.2, 0.5, 0.7]
+  radius: 5
+  seed: 20261124
+  sample_per_generator: 10
+  include_reference: false
+natural_pairs:
+  results: results/fewnerd_full_grid/natural_pairs
+  pilot_reference: results/natural_pairs/predictions.pt

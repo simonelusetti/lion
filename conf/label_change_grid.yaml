@@ -1,0 +1,11 @@
+defaults:
+  - label_change
+  - _self_
+grid_pilot:
+  results: results/label_change_grid
+  fractions: [0.2, 0.5, 0.7]
+  thresholds: [0.7, 0.8, 0.9]
+  radius: 5
+  seed: 20261125
+  heldout_generators: results/label_change_generators
+  evaluation_cache: results/label_change/train/evaluation.pt

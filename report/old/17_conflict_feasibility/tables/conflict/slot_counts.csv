@@ -1,0 +1,7 @@
+dataset,split,sentences,all_words,slots,entity_words,retained_entity_words,retained_entity_share
+conll2003,train,14041,203621,184409,34043,14831,0.43565490702934523
+conll2003,validation,3250,51362,46526,8603,3767,0.43787051028710916
+conll2003,id,3453,46435,41897,8112,3574,0.4405818540433925
+en_ewt_deprel,train,12544,204578,204578,0,0,
+en_ewt_deprel,validation,2001,25148,25148,0,0,
+en_ewt_deprel,id,2077,25094,25094,0,0,
