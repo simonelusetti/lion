@@ -1,0 +1,14 @@
+defaults:
+  - matched_regime
+  - _self_
+runtime:
+  device: cpu
+  threads: 4
+  workers: 0
+  amp: none
+variance_analysis:
+  results: results/variance_decomposition
+  seed: 0
+  cap_per_word: 50
+  ambiguity_thresholds: [0.0, 0.1]
+  rare_max_count: 5

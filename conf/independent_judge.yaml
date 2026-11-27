@@ -1,0 +1,42 @@
+defaults:
+  - population_quality
+  - _self_
+runtime:
+  device: cpu
+  devices: null
+  parallel: false
+  threads: 16
+  workers: 0
+  amp: bf16
+  focal_chunk: 32
+  selector_score_batch_size: 32
+  batch_size: 16
+mechanism_pilot:
+  results: results/independent_judge
+  arms: [ALL, FLIP, AGREED]
+mechanisms:
+  draws: 1
+  full_seed: 20261226
+guided:
+  arms: [uniform]
+  selection_seed: 20261227
+  target_seed: 20261228
+  cache_accepted_features: true
+  cache_all_features: true
+  log_uniform_scores: false
+joint:
+  task: ner
+  results: results/independent_judge
+  judge_name: google/electra-base-discriminator
+  judge_cache: data/models
+  judge_seed: 0
+  proposal_count: 20000
+  source_seed: 20261229
+  calibration_seed: 20261230
+  alpha_cal: 0.025
+  alpha_mass: 0.025
+  tau: 0.7
+  source_correct: true
+  benchmark_sources: 16
+  benchmark_judge_sentences: 32
+  expected_notes_path: /home/simonelusetti/Documents/obsidian/phd/modelling/causal/contextualization.md

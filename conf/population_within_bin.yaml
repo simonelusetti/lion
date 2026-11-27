@@ -1,0 +1,7 @@
+defaults:
+  - population_quality
+  - _self_
+within_bin:
+  source: results/population_quality
+  results: results/population_quality/within_bin_scores
+  alpha: 0.05

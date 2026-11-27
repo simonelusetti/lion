@@ -44,7 +44,7 @@ def arm(cfg,bank,rows,encoder,scorer,name,output=None):
         refine_mask_rng=torch.Generator(device=cfg.runtime.device).manual_seed(cfg.mechanisms.full_seed+50000+draw*100003)
         refine_fill_rng=torch.Generator(device=cfg.runtime.device).manual_seed(cfg.mechanisms.full_seed+70000+draw*100003)
         candidate=torch.empty_like(meta['input_ids']);initial_candidate=torch.empty_like(candidate) if name=='full_refined' else None;prediction=torch.empty(n,dtype=torch.long);confidence=torch.empty(n);source_prediction=torch.empty(n,dtype=torch.long);source_confidence=torch.empty(n)
-        generation_seconds=scoring_seconds=0.;cursor=0;accepted_parts=[];accepted_labels=[];accepted_indices=[]
+        generation_seconds=scoring_seconds=0.;cursor=0;accepted_parts=[];accepted_labels=[];accepted_indices=[];all_features=[]
         for b in selector.focal_batches(data.loader(rows,cfg),'ner',cfg):
             ids,attention,words,focal=(b[k] for k in ('ids','attention','word_ids','focal'));size=len(focal);ordinary=attention&(words>=0)&(words!=focal[:,None])
             sync(cfg);clock=time.monotonic()
@@ -65,6 +65,7 @@ def arm(cfg,bank,rows,encoder,scorer,name,output=None):
             features=selector.draw_features(encoder,ids,attention,words,focal,filled,cfg)[:,0];p=selector.scorer_log_probs(scorer,features,cfg).exp();s,h=p.max(-1)
             original=b['hidden'][b['owner'],focal];os,oh=selector.scorer_log_probs(scorer,original,cfg).exp().max(-1)
             sync(cfg);scoring_seconds+=time.monotonic()-clock
+            if cfg.mechanisms.get('cache_all_features',False):all_features.append(features.cpu().half())
             if cfg.mechanisms.get('cache_accepted_features',False):
                 accepted=(oh==b['gold'])&(h!=oh)&(s>=cfg.mechanisms.tau)&(filled[:,0]!=ids).any(-1)
                 accepted_parts.append(features[accepted].cpu().half());accepted_labels.append(h[accepted].cpu());accepted_indices.append(accepted.nonzero().flatten().cpu()+cursor)
@@ -76,6 +77,7 @@ def arm(cfg,bank,rows,encoder,scorer,name,output=None):
         if output is not None:
             torch.save({'arm':name,'draw_id':draw,'input_ids':candidate,'offsets':meta['offsets'],'prediction':prediction,'confidence':confidence,'source_prediction':source_prediction,'source_confidence':source_confidence,'initial_input_ids':initial_candidate,'timing':timing},output/f'draw{draw}.pt')
             if cfg.mechanisms.get('cache_accepted_features',False):torch.save({'features':torch.cat(accepted_parts),'y':torch.cat(accepted_labels),'example_id':torch.cat(accepted_indices)},output/f'accepted_features_draw{draw}.pt')
+            if cfg.mechanisms.get('cache_all_features',False):torch.save({'features':torch.cat(all_features),'y':prediction,'anchor_id':torch.arange(n)},output/f'all_features_draw{draw}.pt')
             print(f'{name} draw{draw}: generation {generation_seconds:.2f}s, scoring {scoring_seconds:.2f}s',flush=True)
     return {'arm':name,'proposals':n*cfg.mechanisms.draws,'generation_seconds':sum(t['generation_seconds'] for t in timings),'scoring_seconds':sum(t['scoring_seconds'] for t in timings),'wall_seconds':time.monotonic()-started,'draws':timings}
 

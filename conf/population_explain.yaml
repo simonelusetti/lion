@@ -1,0 +1,9 @@
+defaults:
+  - population_quality
+  - _self_
+explain:
+  source: results/population_quality
+  results: results/population_quality/explanatory_analysis
+  matched_counts: [25, 100, 200, 500, 1000]
+  subsamples: 100
+  seed: 20261220

@@ -1,0 +1,33 @@
+defaults:
+  - independent_judge
+  - _self_
+augmentation:
+  seeds: [0, 1, 2, 3, 4]
+mechanism_pilot:
+  results: results/matched_regime
+  feature_draws: 1
+  arms: [uniform_FLIP, uniform_AGREED, uniform_ALL, sentence70_FLIP, sentence70_AGREED, sentence70_ALL, local70_FLIP, local70_AGREED, local70_ALL, MENTION, uniform_FLIP_full, sentence70_FLIP_full, local70_FLIP_full]
+mechanisms:
+  draws: 5
+  cache_accepted_features: true
+  cache_all_features: true
+guided_training:
+  anchors: 40000
+guided:
+  cache_all_features: true
+  cache_accepted_features: true
+  log_uniform_scores: false
+population:
+  save_raw: true
+matched:
+  results: results/matched_regime
+  historical_run: results/augmentation_size_grid
+  judge_run: results/independent_judge
+  originals_run: results/mechanism_training_pilot
+  designs: [uniform, sentence70, local70]
+  source_seed: 20261231
+  subsample_seed: 20261301
+  mention_seed: 20261302
+  majority_pool: originals2400
+  alpha_cal: 0.025
+  alpha_mass: 0.025

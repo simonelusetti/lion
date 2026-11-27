@@ -63,6 +63,7 @@ def exact_original(current,original,attention):return ((current==original)|~atte
 @torch.no_grad()
 def arm(cfg,bank,rows,meta,encoder,scorer,rule,replicates,output=None):
     n=len(rows);lengths=meta['lengths'][:n];offsets=torch.cat((torch.zeros(1,dtype=torch.long),lengths.cumsum(0)));timings=[];arm_start=time.monotonic()
+    final_only=rule=='uniform' and not cfg.guided.get('log_uniform_scores',True)
     if output is not None:output.mkdir(parents=True,exist_ok=True)
     for replicate in range(replicates):
         replicate_started=time.monotonic()
@@ -70,39 +71,53 @@ def arm(cfg,bank,rows,meta,encoder,scorer,rule,replicates,output=None):
         mask_rng=torch.Generator(device=cfg.runtime.device).manual_seed(cfg.mechanisms.full_seed+50000+replicate*100003)
         completion_rng=torch.Generator(device=cfg.runtime.device).manual_seed(cfg.mechanisms.full_seed+70000+replicate*100003)
         select_rng=torch.Generator(device=cfg.runtime.device).manual_seed(cfg.guided.selection_seed+replicate*100003)
-        remask_bits=torch.empty(4,int(offsets[-1]),dtype=torch.bool);state_ids=torch.empty(5,int(offsets[-1]),dtype=torch.int32);state_prob=torch.empty(n,5,len(meta['labels']));source_prediction=torch.empty(n,dtype=torch.long);source_confidence=torch.empty(n)
+        remask_bits=torch.empty(4,int(offsets[-1]),dtype=torch.bool);state_ids=torch.empty(5,int(offsets[-1]),dtype=torch.int32);state_prob=torch.full((n,5,len(meta['labels'])),torch.nan);source_prediction=torch.empty(n,dtype=torch.long);source_confidence=torch.empty(n)
         chosen_occurrence=torch.empty(n,4,dtype=torch.long);text_unchanged=torch.empty(n,4,dtype=torch.bool);divergence=torch.empty(n,4,dtype=torch.float64);effective=torch.empty(n,4,dtype=torch.float64);normalization_error=torch.empty(n,4,dtype=torch.float64)
-        rewards=torch.empty(n,4,9);selection_prob=torch.empty(n,4,9,dtype=torch.float64);generation_time=scoring_time=selection_time=0.;cursor=0;mlm_evaluations=0;masked_distributions=0;accepted_features=[];accepted_labels=[];accepted_anchors=[]
+        rewards=torch.full((n,4,9),torch.nan);selection_prob=torch.empty(n,4,9,dtype=torch.float64);generation_time=scoring_time=selection_time=0.;cursor=0;mlm_evaluations=0;masked_distributions=0;accepted_features=[];accepted_labels=[];accepted_anchors=[];all_features=[]
         for batch in selector.focal_batches(data.loader(rows,cfg),'ner',cfg):
             ids,attention,words,focal=(batch[k] for k in ('ids','attention','word_ids','focal'));b=len(ids);sl=slice(cursor,cursor+b);ordinary=attention&(words>=0)&(words!=focal[:,None]);target=meta['targets'][replicate,sl].to(ids.device)
             previous.sync(cfg);clock=time.monotonic();current=selector.independent_fills(encoder,ids,attention,ordinary,1,bank['special'],cfg,full_rng)[:,0]
             previous.sync(cfg);generation_time+=time.monotonic()-clock;mlm_evaluations+=int(ordinary.any(-1).sum());masked_distributions+=int(ordinary.sum())
-            clock=time.monotonic();p,_=score(cfg,encoder,scorer,batch,current[:,None]);p=p[:,0];orig=selector.scorer_log_probs(scorer,batch['hidden'][batch['owner'],focal],cfg).exp();os,oh=orig.max(-1)
-            previous.sync(cfg);scoring_time+=time.monotonic()-clock;source_prediction[sl]=oh.cpu();source_confidence[sl]=os.cpu();state_prob[sl,0]=p.cpu();start,end=int(offsets[cursor]),int(offsets[cursor+b]);state_ids[0,start:end]=current[attention].int().cpu()
+            clock=time.monotonic()
+            if not final_only:
+                p,_=score(cfg,encoder,scorer,batch,current[:,None]);state_prob[sl,0]=p[:,0].cpu()
+            orig=selector.scorer_log_probs(scorer,batch['hidden'][batch['owner'],focal],cfg).exp();os,oh=orig.max(-1)
+            previous.sync(cfg);scoring_time+=time.monotonic()-clock;source_prediction[sl]=oh.cpu();source_confidence[sl]=os.cpu();start,end=int(offsets[cursor]),int(offsets[cursor+b]);state_ids[0,start:end]=current[attention].int().cpu()
             count=torch.ceil(ordinary.sum(-1)*cfg.guided.mask_fraction).long()
             for step in range(cfg.guided.rounds):
                 previous.sync(cfg);clock=time.monotonic();noise=torch.rand(ordinary.shape,device=ids.device,generator=mask_rng).masked_fill(~ordinary,torch.inf);remask=ordinary&(noise.argsort(-1).argsort(-1)<count[:,None])
                 proposals=selector.independent_fills(encoder,current,attention,remask,cfg.guided.completions,bank['special'],cfg,completion_rng);candidates=torch.cat((current[:,None],proposals),1)
                 previous.sync(cfg);generation_time+=time.monotonic()-clock;mlm_evaluations+=int(remask.any(-1).sum());masked_distributions+=int(remask.sum())
-                clock=time.monotonic();p,candidate_features=score(cfg,encoder,scorer,batch,candidates)
-                previous.sync(cfg);scoring_time+=time.monotonic()-clock;clock=time.monotonic()
-                r=p.gather(2,target[:,None,None].expand(-1,9,1))[:,:,0];pi,d,e,err=probabilities(r,rule);choice=torch.multinomial(pi,1,replacement=True,generator=select_rng)[:,0];owner=torch.arange(b,device=ids.device);next_state=candidates[owner,choice]
-                unchanged=exact_original(next_state,current,attention);next_p=p[owner,choice]
+                if final_only:r=torch.zeros(b,candidates.shape[1],device=ids.device)
+                else:
+                    clock=time.monotonic();p,candidate_features=score(cfg,encoder,scorer,batch,candidates)
+                    previous.sync(cfg);scoring_time+=time.monotonic()-clock;r=p.gather(2,target[:,None,None].expand(-1,9,1))[:,:,0]
+                clock=time.monotonic();pi,d,e,err=probabilities(r,rule);choice=torch.multinomial(pi,1,replacement=True,generator=select_rng)[:,0];owner=torch.arange(b,device=ids.device);next_state=candidates[owner,choice]
+                unchanged=exact_original(next_state,current,attention)
                 previous.sync(cfg);selection_time+=time.monotonic()-clock
                 remask_bits[step,start:end]=remask[attention].cpu()
-                chosen_occurrence[sl,step]=choice.cpu();text_unchanged[sl,step]=unchanged.cpu();divergence[sl,step]=d.cpu();effective[sl,step]=e.cpu();normalization_error[sl,step]=err.cpu();rewards[sl,step]=r.cpu();selection_prob[sl,step]=pi.cpu()
-                current=next_state;state_ids[step+1,start:end]=current[attention].int().cpu();state_prob[sl,step+1]=next_p.cpu()
+                chosen_occurrence[sl,step]=choice.cpu();text_unchanged[sl,step]=unchanged.cpu();divergence[sl,step]=d.cpu();effective[sl,step]=e.cpu();normalization_error[sl,step]=err.cpu();selection_prob[sl,step]=pi.cpu()
+                if not final_only:
+                    next_p=p[owner,choice];rewards[sl,step]=r.cpu();state_prob[sl,step+1]=next_p.cpu()
+                current=next_state;state_ids[step+1,start:end]=current[attention].int().cpu()
+            if final_only:
+                clock=time.monotonic();p,features=score(cfg,encoder,scorer,batch,current[:,None]);next_p=p[:,0];selected_features=features[:,0]
+                previous.sync(cfg);scoring_time+=time.monotonic()-clock;state_prob[sl,-1]=next_p.cpu()
+            else:selected_features=candidate_features[owner,choice]
             if cfg.guided.get('cache_accepted_features',False):
                 confidence,assigned=next_p.max(-1);accept=(oh==batch['gold'])&(assigned!=batch['gold'])&(confidence>=cfg.guided.tau)&~exact_original(current,ids,attention)
-                accepted_features.append(candidate_features[owner,choice][accept].cpu().half());accepted_labels.append(assigned[accept].cpu());accepted_anchors.append(accept.nonzero().flatten().cpu()+cursor)
+                accepted_features.append(selected_features[accept].cpu().half());accepted_labels.append(assigned[accept].cpu());accepted_anchors.append(accept.nonzero().flatten().cpu()+cursor)
+            if cfg.guided.get('cache_all_features',False):all_features.append(selected_features.cpu().half())
             cursor+=b
-        timing={'arm':rule,'replicate':replicate,'trajectories':n,'mlm_sequence_evaluations':mlm_evaluations,'mlm_masked_position_distributions':masked_distributions,'scorer_encoded_sequence_evaluations':n*(1+cfg.guided.rounds*(cfg.guided.completions+1)),
-            'scorer_readout_evaluations_including_source':n*(2+cfg.guided.rounds*(cfg.guided.completions+1)),'generation_seconds':generation_time,'scoring_seconds':scoring_time,'selection_seconds':selection_time}
+        encoded=1 if final_only else 1+cfg.guided.rounds*(cfg.guided.completions+1)
+        timing={'arm':rule,'replicate':replicate,'trajectories':n,'mlm_sequence_evaluations':mlm_evaluations,'mlm_masked_position_distributions':masked_distributions,'scorer_encoded_sequence_evaluations':n*encoded,
+            'scorer_readout_evaluations_including_source':n*(encoded+1),'intermediate_scorer_logging':not final_only,'generation_seconds':generation_time,'scoring_seconds':scoring_time,'selection_seconds':selection_time}
         timings.append(timing)
         if output is not None:
             torch.save({'arm':rule,'replicate':replicate,'state_input_ids':state_ids,'offsets':offsets,'state_probabilities':state_prob,'source_prediction':source_prediction,'source_confidence':source_confidence,
                 'refinement_mask_positions':remask_bits,'selected_candidate_occurrence':chosen_occurrence,'selected_text_unchanged':text_unchanged,'chi2':divergence,'effective_candidates':effective,'normalization_residual':normalization_error,'candidate_target_rewards':rewards,'selection_probabilities':selection_prob,'timing':timing},output/f'replicate{replicate}.pt')
             if cfg.guided.get('cache_accepted_features',False):torch.save({'features':torch.cat(accepted_features),'y':torch.cat(accepted_labels),'anchor_id':torch.cat(accepted_anchors)},output/f'accepted_features_draw{replicate}.pt')
+            if cfg.guided.get('cache_all_features',False):torch.save({'features':torch.cat(all_features),'y':state_prob[:,-1].argmax(-1),'anchor_id':torch.arange(n)},output/f'all_features_draw{replicate}.pt')
             print(f'{rule} replicate{replicate}: generation {generation_time:.1f}s, scoring {scoring_time:.1f}s, selection {selection_time:.1f}s',flush=True)
         timing['wall_seconds']=time.monotonic()-replicate_started
     return {'arm':rule,'trajectories':n*replicates,'wall_seconds':time.monotonic()-arm_start,'replicates':timings}

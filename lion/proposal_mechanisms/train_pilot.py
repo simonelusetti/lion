@@ -21,7 +21,7 @@ def head_names(cfg):return ('baseline',*cfg.mechanism_pilot.get('arms',generate.
 
 
 def augmentation_features(cfg,name):
-    frames=[torch.load(root(cfg)/'generate'/name/f'accepted_features_draw{draw}.pt',mmap=True,weights_only=False) for draw in range(cfg.mechanisms.draws)]
+    frames=[torch.load(root(cfg)/'generate'/name/f'accepted_features_draw{draw}.pt',mmap=True,weights_only=False) for draw in range(cfg.mechanism_pilot.get('feature_draws',cfg.mechanisms.draws))]
     return {key:torch.cat([f[key] for f in frames]) for key in ('features','y')}
 
 

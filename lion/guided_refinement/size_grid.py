@@ -22,7 +22,7 @@ def fraction_arm(cfg,bank,rows,encoder,scorer,rule,output):
     for draw in range(cfg.mechanisms.draws):
         rank_rng=torch.Generator(device=cfg.runtime.device).manual_seed(cfg.generators.seed+(0 if nearby else 100)+draw*100003)
         fill_rng=torch.Generator(device=cfg.runtime.device).manual_seed(cfg.generators.seed+(0 if nearby else 100)+round(fraction*100)+10+draw*100003)
-        features=[];labels=[];anchors=[];inputs=[];lengths=[];confidences=[];cursor=0;generation_seconds=scoring_seconds=0.
+        features=[];labels=[];anchors=[];inputs=[];lengths=[];confidences=[];raw_inputs=[];raw_lengths=[];raw_probability=[];raw_original=[];all_vectors=[];all_labels=[];cursor=0;generation_seconds=scoring_seconds=0.
         for batch in selector.focal_batches(data.loader(rows,cfg),'ner',cfg):
             ids,attention,words,focal,gold=(batch[k] for k in ('ids','attention','word_ids','focal','gold'))
             positions=torch.arange(int(batch['counts'].max()),device=ids.device)[None]
@@ -35,14 +35,21 @@ def fraction_arm(cfg,bank,rows,encoder,scorer,rule,output):
             fills=selector.independent_fills(encoder,ids,attention,drop,1,bank['special'],cfg,fill_rng)
             generate.previous.sync(cfg);generation_seconds+=time.monotonic()-clock;clock=time.monotonic()
             vectors=selector.draw_features(encoder,ids,attention,words,focal,fills,cfg)[:,0]
-            confidence,prediction=selector.scorer_log_probs(scorer,vectors,cfg).exp().max(-1)
+            probability=selector.scorer_log_probs(scorer,vectors,cfg).exp();confidence,prediction=probability.max(-1)
             original=selector.scorer_log_probs(scorer,batch['hidden'][batch['owner'],focal],cfg).argmax(-1)
             accept=(original==gold)&(prediction!=gold)&(confidence>=cfg.guided.tau)&~generate.exact_original(fills[:,0],ids,attention)
             generate.previous.sync(cfg);scoring_seconds+=time.monotonic()-clock
+            if cfg.mechanisms.get('cache_all_features',False):all_vectors.append(vectors.cpu().half());all_labels.append(prediction.cpu())
             features.append(vectors[accept].cpu().half());labels.append(prediction[accept].cpu());anchors.append(accept.nonzero().flatten().cpu()+cursor);confidences.append(confidence[accept].cpu())
             inputs.append(fills[:,0][accept][attention[accept]].cpu().int());lengths.append(attention[accept].sum(-1).cpu());cursor+=len(ids)
+            if cfg.get('population',{}).get('save_raw',False):
+                raw_inputs.append(fills[:,0][attention].cpu().int());raw_lengths.append(attention.sum(-1).cpu());raw_probability.append(probability.cpu());raw_original.append(original.cpu())
         saved={'features':torch.cat(features),'y':torch.cat(labels),'anchor_id':torch.cat(anchors),'confidence':torch.cat(confidences),'input_ids':torch.cat(inputs),'lengths':torch.cat(lengths)}
         torch.save(saved,output/f'accepted_features_draw{draw}.pt')
+        if cfg.mechanisms.get('cache_all_features',False):torch.save({'features':torch.cat(all_vectors),'y':torch.cat(all_labels),'anchor_id':torch.arange(len(rows))},output/f'all_features_draw{draw}.pt')
+        if cfg.get('population',{}).get('save_raw',False):
+            length=torch.cat(raw_lengths);offsets=torch.cat((torch.zeros(1,dtype=torch.long),length.cumsum(0)))
+            torch.save({'state_input_ids':torch.cat(raw_inputs)[None],'offsets':offsets,'state_probabilities':torch.cat(raw_probability)[:,None],'source_prediction':torch.cat(raw_original)},output/f'replicate{draw}.pt')
         timing={'draw':draw,'proposals':len(rows),'accepted':len(saved['y']),'generation_seconds':generation_seconds,'scoring_seconds':scoring_seconds};timings.append(timing)
         print(f'{rule} draw{draw}: {timing}',flush=True)
     return {'arm':rule,'trajectories':len(rows)*cfg.mechanisms.draws,'wall_seconds':time.monotonic()-start,'replicates':timings}

@@ -1,0 +1,26 @@
+defaults:
+  - augmentation_size_grid
+  - _self_
+mechanisms:
+  draws: 1
+  full_seed: 20261210
+guided:
+  target_seed: 20261211
+  selection_seed: 20261212
+generators:
+  seed: 20261213
+mechanism_pilot:
+  results: results/population_quality
+guided_training:
+  anchors: 4000
+population:
+  save_raw: true
+  proposals: 20000
+  proposal_seed: 20261214
+  natural_seed: 20261215
+  focal_seed: 20261216
+  design_sentences: 4000
+  bins: 5
+  alpha_cal: 0.025
+  alpha_in: 0.025
+  old_error: 0.028

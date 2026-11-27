@@ -1,0 +1,6 @@
+defaults:
+  - population_quality
+  - _self_
+binwise:
+  source: results/population_quality
+  results: results/population_quality/reanalysis_binwise
