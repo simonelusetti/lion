@@ -20,14 +20,16 @@ def load(path):return torch.load(path,weights_only=False,mmap=True)
 def collate(rows):return torch.stack(rows)
 
 
-def collect_metadata(cfg,cache):
+def collect_metadata(cfg,cache,return_rows=False):
     original=absolute(cfg.matched.originals_run)/'prepare';sentences=read_csv(original/'sentences.csv');native=pq.read_table(parquet('train'),columns=['tokens']).to_pylist();forms=[]
     for row in sentences:forms.extend(native[int(row['source_id'].split('/')[-1])]['tokens'][:int(row['words'])])
-    tests={};tokenizer=AutoTokenizer.from_pretrained(cfg.encoder.name,use_fast=True,local_files_only=True);raw=pq.read_table(parquet('test'),columns=['tokens','ner_tags']).to_pylist();words=[];gold=[]
+    tests={};token_rows={'id':[]};tokenizer=AutoTokenizer.from_pretrained(cfg.encoder.name,use_fast=True,local_files_only=True);raw=pq.read_table(parquet('test'),columns=['tokens','ner_tags']).to_pylist();words=[];gold=[]
     for start in range(0,len(raw),256):
         block=raw[start:start+256];encoded=tokenizer([r['tokens'] for r in block],is_split_into_words=True,add_special_tokens=True,truncation=True,max_length=cfg.encoder.max_length)
         for i,row in enumerate(block):
             kept=list(dict.fromkeys(w for w in encoded.word_ids(i) if w is not None));words.extend(row['tokens'][w] for w in kept);gold.extend(row['ner_tags'][w] for w in kept)
+            if return_rows:
+                packed={w:j for j,w in enumerate(kept)};token_rows['id'].append({'ids':encoded['input_ids'][i],'word_ids':[packed.get(w,-1) for w in encoded.word_ids(i)],'words':[row['tokens'][w] for w in kept]})
     tests['id']=words
     if not torch.equal(torch.tensor(gold),cache['sets']['id']['data']['y']):raise ValueError('Native test words do not align with cached gold')
     sources=[]
@@ -37,7 +39,8 @@ def collect_metadata(cfg,cache):
         data=load_from_disk(path);rows=[r for r in data['test'] if r['labels']];words=[w for r in rows for w in r['words']];gold=torch.tensor([y for r in rows for y in r['labels']])
         if not torch.equal(gold,item['data']['y']):raise ValueError(f'{target}: cached word metadata/gold mismatch')
         tests[split]=words;sources.append({'target':target,'metadata_source':str(path),'word_metadata':'reused existing token cache'})
-    return forms,tests,sources
+        if return_rows:token_rows[split]=rows
+    return (forms,tests,sources,token_rows) if return_rows else (forms,tests,sources)
 
 
 def category(counts,threshold):

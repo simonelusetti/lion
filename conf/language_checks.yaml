@@ -1,0 +1,21 @@
+defaults:
+  - variance_decomposition
+  - _self_
+runtime:
+  device: cpu
+  parallel: false
+  threads: 16
+  workers: 0
+  amp: bf16
+language_checks:
+  results: results/language_checks
+  sample_per_test: 8000
+  seed: 0
+  mlm_batch_size: 32
+  top_k: 50
+  frequency_edges: [0, 1, 3, 7, 15, 31]
+  frequency_names: [unseen_0, singleton_1, freq_2_3, freq_4_7, freq_8_15, freq_16_31, freq_32plus]
+  decision_rules:
+    A: Per dataset all three raw-definition accuracy criteria; aggregate MIXED if datasets disagree. Robust definition separately reported.
+    B: Strict majority of arms must have larger pooled 0-1 gain than 32+ on a strict majority of targets. Accuracy and token-F1 reported separately; disagreeing verdicts give MIXED.
+    C: Positive Spearman frequency trends for ambiguity, entropy and dispersion; frequent-ambiguous advantage in a strict majority of context-arm/target comparisons for both metrics and ambiguity definitions; MENTION best band unseen or rare on a majority of targets. PASS only if all components pass; MIXED if components disagree.

@@ -1,0 +1,22 @@
+defaults:
+  - matched_regime
+  - _self_
+mechanism_pilot:
+  results: results/paradigm_swaps
+  arms: [PARADIGM_SPAN, PARADIGM_SPAN_STRICT, PARADIGM_TOKEN, LWTR_TOKEN]
+  feature_draws: 1
+runtime:
+  device: cpu
+  devices: null
+  parallel: false
+  threads: 16
+  workers: 0
+  amp: bf16
+paradigm_swaps:
+  results: results/paradigm_swaps
+  count: 1932
+  seed: 20261128
+  generation_batch_size: 32
+  pll_batch_size: 32
+  example_count: 30
+  arms: [PARADIGM_SPAN, PARADIGM_SPAN_STRICT, PARADIGM_TOKEN, LWTR_TOKEN]

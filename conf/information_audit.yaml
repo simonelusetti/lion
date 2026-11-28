@@ -1,0 +1,13 @@
+defaults:
+  - language_checks
+  - _self_
+runtime:
+  device: cpu
+  threads: 4
+  workers: 0
+information_audit:
+  results: results/information_audit
+  seed: 0
+  shuffles: 20
+  sample_size: 60000
+  min_slice: 50
